@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en" x-data="logiqDocs()" x-init="init()" :class="{ dark: darkMode }">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Logiq Documentation</title>
+  <link rel="stylesheet" href="app.css">
+
+  <!-- Load order matters: plugins first, then data libs, then main.js, then Alpine core LAST -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.1/dist/cdn.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.14.1/dist/cdn.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/marked@11.2.0/marked.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+
+  <!-- main.js MUST come before alpine.js so logiqDocs is defined first -->
+  <script defer src="main.js"></script>
+
+  <!-- Alpine core LAST -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body>
+
+  <div x-show="loading" class="state-screen">
+    <div class="spinner"></div>
+    <p>Loading documentation…</p>
+  </div>
+
+  <div x-show="error && !loading" class="state-screen error" x-cloak>
+    <h2>Could not load documentation</h2>
+    <p x-text="error"></p>
+    <p class="hint">Make sure <code>docs-bundle.json</code> is next to <code>index.html</code>, and serve over HTTP (not <code>file://</code>).</p>
+  </div>
+
+  <div x-show="!loading && !error" x-cloak class="site">
+
+    <div class="backdrop" x-show="mobileSidebarOpen" x-transition.opacity
+         @click="mobileSidebarOpen = false"></div>
+
+    <aside class="sidebar" :class="{ 'is-open': mobileSidebarOpen }">
+      <div class="sidebar-header">
+        <a href="#" class="brand" @click.prevent="navigateTo(firstPagePath())">
+          <span class="brand-name">Logiq</span>
+          <span class="brand-version" x-text="version"></span>
+        </a>
+      </div>
+
+      <div class="search-wrap">
+        <input type="search" x-model="searchQuery"
+               @input.debounce.100ms="filterNav()"
+               placeholder="Search documentation…"
+               class="search-input" aria-label="Search documentation">
+        <span class="search-hint" x-show="!searchQuery" x-text="totalPages + ' pages'"></span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <template x-for="section in filteredNavigation" :key="section.name">
+          <div class="nav-section">
+            <button class="nav-section-title"
+                    @click="toggleSection(section.name)"
+                    :aria-expanded="openSections.includes(section.name)">
+              <span x-text="section.name"></span>
+              <span class="chevron" :class="{ 'rotate-90': openSections.includes(section.name) }">›</span>
+            </button>
+            <div x-show="openSections.includes(section.name)" x-collapse>
+              <template x-for="page in section.pages" :key="page.path">
+                <a :href="'#' + page.path"
+                   class="nav-link"
+                   :class="{ active: currentPath === page.path }"
+                   @click.prevent="navigateTo(page.path)">
+                  <span x-text="page.title"></span>
+                </a>
+              </template>
+            </div>
+          </div>
+        </template>
+        <div x-show="filteredNavigation.length === 0 && searchQuery" class="no-results">
+          No pages match "<span x-text="searchQuery"></span>".
+        </div>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn mobile-only" @click="mobileSidebarOpen = true"
+                aria-label="Open navigation">☰</button>
+
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <template x-for="(part, i) in breadcrumbs" :key="i">
+            <span class="breadcrumb-part">
+              <span x-text="part"></span>
+              <span x-show="i < breadcrumbs.length - 1" class="breadcrumb-sep">/</span>
+            </span>
+          </template>
+        </nav>
+
+        <button class="icon-btn" @click="toggleDarkMode()"
+                :aria-label="darkMode ? 'Light mode' : 'Dark mode'">
+          <span x-text="darkMode ? '☀' : '☾'"></span>
+        </button>
+      </header>
+
+      <article class="content" x-html="currentHtml" x-effect="highlightCode()"></article>
+
+      <nav class="bottom-nav" x-show="prevPage || nextPage">
+        <a x-show="prevPage" :href="'#' + (prevPage?.path || '')"
+           class="nav-prev"
+           @click.prevent="prevPage && navigateTo(prevPage.path)">
+          <span class="nav-label">Previous</span>
+          <span class="nav-title" x-text="prevPage?.title || ''"></span>
+        </a>
+        <a x-show="nextPage" :href="'#' + (nextPage?.path || '')"
+           class="nav-next"
+           @click.prevent="nextPage && navigateTo(nextPage.path)">
+          <span class="nav-label">Next</span>
+          <span class="nav-title" x-text="nextPage?.title || ''"></span>
+        </a>
+      </nav>
+    </main>
+
+  </div>
+
+</body>
+</html>
