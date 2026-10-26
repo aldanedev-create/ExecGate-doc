@@ -1,6 +1,6 @@
 # 02 — Your First Capability
 
-Register a Python function as a capability, see the schema Logiq derives, and watch it reject bad input while accepting good input.
+Register a Python function as a capability, see the schema ExecGate derives, and watch it reject bad input while accepting good input.
 
 **Time:** 5 minutes.
 
@@ -11,7 +11,7 @@ Register a Python function as a capability, see the schema Logiq derives, and wa
 Create a file named `hello_logiq.py`:
 
 ```python
-from logiq import Logix
+from execgate import Logix
 
 logix = Logix()
 
@@ -41,7 +41,7 @@ That's the first important fact: `add` is still a normal function. The decorator
 
 ---
 
-## Run it through Logiq
+## Run it through ExecGate
 
 Add this to `hello_logiq.py`:
 
@@ -68,7 +68,7 @@ True
 Two ways to call the function:
 
 - Direct: `add(2, 3)` → `5`.
-- Through Logiq: `logix.run(...)` → a `Result` whose `.value` is `5`.
+- Through ExecGate: `logix.run(...)` → a `Result` whose `.value` is `5`.
 
 Both are correct. The direct call bypasses the pipeline. The `logix.run()` call goes through it.
 
@@ -148,7 +148,7 @@ Three things to notice:
 - `code='SCHEMA_VALIDATION_FAILED'` — a stable error code. Switch on this, not on the message.
 - `path='with.a'` — the specific argument that failed.
 
-The handler was never invoked. Logiq validated the plan, found that `"two"` is not an `int`, and rejected the plan before running `add("two", 3)`.
+The handler was never invoked. ExecGate validated the plan, found that `"two"` is not an `int`, and rejected the plan before running `add("two", 3)`.
 
 Try more bad input:
 
@@ -160,7 +160,7 @@ print(logix.run({"call": "add", "with": {"a": 1, "b": 2, "c": 3}}).errors)
 
 Expected behavior:
 
-- `{"a": True, "b": 3}` → `SCHEMA_VALIDATION_FAILED`: expected `int`, got `bool`. `True` is not `1` in Logiq.
+- `{"a": True, "b": 3}` → `SCHEMA_VALIDATION_FAILED`: expected `int`, got `bool`. `True` is not `1` in ExecGate.
 - `{"a": 1}` → `SCHEMA_VALIDATION_FAILED`: missing required field `b`.
 - `{"a": 1, "b": 2, "c": 3}` → `SCHEMA_VALIDATION_FAILED`: unknown argument `c`.
 
@@ -186,7 +186,7 @@ TypeError: cannot register capability 'get_customer':
   return: unsupported annotation: dict
 ```
 
-A bare `dict` is not a schema. It says "returns a dict with arbitrary keys and values." Logiq cannot validate that. Use `dict[str, int]` or a Pydantic model.
+A bare `dict` is not a schema. It says "returns a dict with arbitrary keys and values." ExecGate cannot validate that. Use `dict[str, int]` or a Pydantic model.
 
 Fix it:
 
@@ -210,7 +210,7 @@ Now it registers. The output schema is:
 
 This represents a dictionary whose values must all be integers.
 
-This is the **"reject rather than weaken"** rule. If Logiq accepted a bare `dict`, it would silently skip output validation for that capability. That's worse than a clear error.
+This is the **"reject rather than weaken"** rule. If ExecGate accepted a bare `dict`, it would silently skip output validation for that capability. That's worse than a clear error.
 
 ---
 
@@ -229,7 +229,7 @@ TypeError: cannot register capability 'tag':
   parameter 'x': unsupported annotation: set
 ```
 
-`set` is not JSON-representable. Logiq rejects it at registration rather than silently accepting something it can't validate.
+`set` is not JSON-representable. ExecGate rejects it at registration rather than silently accepting something it can't validate.
 
 The error aggregates every problem at once. If three parameters have problems, all three appear in the message. You fix them in one round.
 
@@ -269,7 +269,7 @@ You'll use most of these later.
 - Bare `dict`, bare `list`, `set`, and `Any` are rejected at registration. This is the "reject rather than weaken" rule.
 - Errors are structured: `code` + `message` + `path`.
 
-You now have **Level 1 — Logiq as a schema-enforcing dispatcher**.
+You now have **Level 1 — ExecGate as a schema-enforcing dispatcher**.
 
 The next file goes further: multi-step plans with references between steps.
 

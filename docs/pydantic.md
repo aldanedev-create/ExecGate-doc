@@ -1,20 +1,20 @@
 # Pydantic Integration
 
-`logiq_pydantic` is an optional adapter that lets Pydantic model classes become capability schemas. It is not required for Logiq; the native schema engine works without it.
+`execgate_pydantic` is an optional adapter that lets Pydantic model classes become capability schemas. It is not required for ExecGate; the native schema engine works without it.
 
-The adapter is a leaf node (ADR-0006): it converts model annotations into `logiq.schemas.Type` instances and normalizes Pydantic instance output to JSON-safe dictionaries. It never touches the verifier, the executor, or the IR.
+The adapter is a leaf node (ADR-0006): it converts model annotations into `execgate.schemas.Type` instances and normalizes Pydantic instance output to JSON-safe dictionaries. It never touches the verifier, the executor, or the IR.
 
 ---
 
 ## 1. Install
 
 ```bash
-pip install "logiq[pydantic]"
+pip install "execgate[pydantic]"
 ```
 
 Requires `pydantic>=2,<3`.
 
-Importing `logiq_pydantic` without Pydantic installed raises a clear `ImportError` naming the install command. `import logiq` never imports Pydantic.
+Importing `execgate_pydantic` without Pydantic installed raises a clear `ImportError` naming the install command. `import execgate` never imports Pydantic.
 
 ---
 
@@ -22,7 +22,7 @@ Importing `logiq_pydantic` without Pydantic installed raises a clear `ImportErro
 
 ```python
 from pydantic import BaseModel, Field
-from logiq import Logix
+from execgate import Logix
 
 
 class CreateOrder(BaseModel):
@@ -44,7 +44,7 @@ def prepare_order(order: CreateOrder) -> Order:
     return Order(id=1, status="pending")
 ```
 
-Registration works unchanged. Logiq detects the Pydantic models in the signature, wraps them as `PydanticType`, and the native schema engine handles the rest.
+Registration works unchanged. ExecGate detects the Pydantic models in the signature, wraps them as `PydanticType`, and the native schema engine handles the rest.
 
 The AI sees the model's JSON Schema in the catalog:
 
@@ -119,7 +119,7 @@ Two modes are available, configured globally:
 - **`HandlerMode.VALUES`:** The handler receives the model's `model_dump(mode="json")` output — plain JSON-safe dictionaries.
 
 ```python
-from logiq_pydantic import HandlerMode, set_handler_mode, get_handler_mode
+from execgate_pydantic import HandlerMode, set_handler_mode, get_handler_mode
 
 set_handler_mode(HandlerMode.VALUES)  # or set_handler_mode("values")
 assert get_handler_mode() == HandlerMode.VALUES
@@ -131,7 +131,7 @@ The mode is a global setting in version 0.1.0. It applies to every capability on
 
 **MODEL** — Use when the handler benefits from Pydantic methods and features such as `model_validate`, `model_dump`, aliases, and validators. The handler trusts the model class.
 
-**VALUES** — Use when the handler does not know about Pydantic, or when the same handler is used through both Logiq and a non-Pydantic path. The values are plain dictionaries, identical to what a JSON-based caller would send.
+**VALUES** — Use when the handler does not know about Pydantic, or when the same handler is used through both ExecGate and a non-Pydantic path. The values are plain dictionaries, identical to what a JSON-based caller would send.
 
 ### Thread safety
 
@@ -153,7 +153,7 @@ The default is `HandlerMode.MODEL`. This is what a developer expects from `def f
 TypeAdapter(model_cls).validate_python(value)
 ```
 
-On success, it returns `[]`. On `pydantic.ValidationError`, it translates every error into a `logiq.schemas.SchemaError`.
+On success, it returns `[]`. On `pydantic.ValidationError`, it translates every error into a `execgate.schemas.SchemaError`.
 
 ### Error translation
 
@@ -224,7 +224,7 @@ The catalog and the validator see the same schema. They cannot disagree.
 
 ## 8. `$ref` into Pydantic outputs
 
-A multi-step plan can reference a field of a Pydantic-typed output. The verifier's `_walk_type_path` traverses `PydanticType.walk`, which resolves field names to their Logiq types.
+A multi-step plan can reference a field of a Pydantic-typed output. The verifier's `_walk_type_path` traverses `PydanticType.walk`, which resolves field names to their ExecGate types.
 
 ```python
 @logix.capability
@@ -281,7 +281,7 @@ If you need this, declare the field as `list[dict]` on the model — a plain dic
 |---|---|
 | Model validation fails (wrong type, missing field, constraint) | `SCHEMA_VALIDATION_FAILED` |
 | Model output has the wrong shape | `OUTPUT_VALIDATION_FAILED` |
-| Model annotation used without `logiq_pydantic` installed | `TypeError` at registration (`unsupported annotation: ModelName`) |
+| Model annotation used without `execgate_pydantic` installed | `TypeError` at registration (`unsupported annotation: ModelName`) |
 | `Annotated[Model, ...]` used | `Annotated` is unwrapped; the model is used and metadata is dropped (silent, documented) |
 | `$ref` to a `list[Model]` field | `INVALID_REFERENCE` at verification time |
 
@@ -295,26 +295,26 @@ def f(order: Order) -> None:
     ...
 ```
 
-without `logiq_pydantic` installed gets:
+without `execgate_pydantic` installed gets:
 
 ```text
 TypeError: cannot register capability 'f':
   parameter 'order': unsupported annotation: Order
 ```
 
-The error does not say "install `logiq_pydantic`." A user has to know the adapter exists. This is documented in `docs/schemas.md` §9 and in the error message itself if a future version can detect the case. In version 0.1.0, the core does not know the adapter exists.
+The error does not say "install `execgate_pydantic`." A user has to know the adapter exists. This is documented in `docs/schemas.md` §9 and in the error message itself if a future version can detect the case. In version 0.1.0, the core does not know the adapter exists.
 
 ---
 
 ## 10. What changes when the adapter is installed
 
-The core does not import `logiq_pydantic`. What changes:
+The core does not import `execgate_pydantic`. What changes:
 
-1. `capabilities._maybe_transform_pydantic` — a try-import. If successful, it calls `logiq_pydantic.transform_signature(info)` before inferring schemas.
-2. `executor._prepare_handler_args` — a try-import of `logiq_pydantic.get_handler_mode` inside the executor. If successful, it uses the current mode when calling `PydanticType.prepare_input`.
+1. `capabilities._maybe_transform_pydantic` — a try-import. If successful, it calls `execgate_pydantic.transform_signature(info)` before inferring schemas.
+2. `executor._prepare_handler_args` — a try-import of `execgate_pydantic.get_handler_mode` inside the executor. If successful, it uses the current mode when calling `PydanticType.prepare_input`.
 3. **Executor output normalization** — `hasattr(cap.output_schema, "prepare_output")` is checked after output validation. If present, the value is normalized.
 
-That's the entire integration: three try-imports. If `logiq_pydantic` is not installed, all three are no-ops.
+That's the entire integration: three try-imports. If `execgate_pydantic` is not installed, all three are no-ops.
 
 ---
 
@@ -365,6 +365,6 @@ Business rules belong in invariants (`logix.authorize(...)`), not in the model's
 - Your types are simple primitives and containers.
 - You want zero runtime dependencies (Pydantic is a substantial package).
 - You do not need Pydantic's serialization features.
-- You are writing a `logiq_mcp` proxy (the upstream tools' schemas are JSON Schema; Pydantic adds a conversion step).
+- You are writing a `execgate_mcp` proxy (the upstream tools' schemas are JSON Schema; Pydantic adds a conversion step).
 
 Both approaches produce the same JSON Schema for the AI and the same verifier behavior. The choice is about the developer's workflow, not the guarantees.

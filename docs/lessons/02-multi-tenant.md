@@ -83,10 +83,10 @@ TENANTS = {
 
 ## Step 2 — Build an engine per tenant
 
-Import the Logiq classes and define `make_engine()`:
+Import the ExecGate classes and define `make_engine()`:
 
 ```python
-from logiq import Logix, Allow, Deny
+from execgate import Logix, Allow, Deny
 
 
 def make_engine(tenant: TenantConfig) -> Logix:
@@ -374,11 +374,11 @@ This makes engine isolation structural: a `VerifiedPlan` from one engine cannot 
 Replace the contents of `tenants.py` with this complete file:
 
 ```python
-"""Lesson 02: Multi-tenant Logiq application."""
+"""Lesson 02: Multi-tenant ExecGate application."""
 
 from dataclasses import dataclass
 
-from logiq import Logix, Allow, Deny
+from execgate import Logix, Allow, Deny
 
 
 @dataclass(frozen=True)
@@ -746,6 +746,6 @@ Registry snapshot protection covers the capability registry; it should not be as
 
 ## Next lesson
 
-You've built multi-tenant isolation. Lesson 03 covers custom provider adapters — writing a translation layer for an AI SDK that `logiq_ai` does not ship with.
+You've built multi-tenant isolation. Lesson 03 covers custom provider adapters — writing a translation layer for an AI SDK that `execgate_ai` does not ship with.
 
 [Continue to Lesson 03 — Custom Adapter](03-custom-adapter.md)

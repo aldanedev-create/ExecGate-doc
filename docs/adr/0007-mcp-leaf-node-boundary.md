@@ -10,17 +10,17 @@
 
 ## Context
 
-Logiq integrates with the Model Context Protocol (MCP) in two modes:
+ExecGate integrates with the Model Context Protocol (MCP) in two modes:
 
-- **Server mode** (`LogixMCPServer`) — expose a Logiq engine's
+- **Server mode** (`LogixMCPServer`) — expose a ExecGate engine's
   capabilities to any MCP client. Every call runs through the full
-  Logiq pipeline.
+  ExecGate pipeline.
 - **Proxy mode** (`LogixMCPProxy`) — verify calls to an untrusted
   upstream MCP server before forwarding.
 
 The proxy mode is, structurally, a **verification boundary in front of
 another server.** It would be natural to implement it by reaching into
-Logiq's internals:
+ExecGate's internals:
 
 - Call the verifier directly.
 - Construct a `VerifiedPlan` inline.
@@ -31,11 +31,11 @@ reintroduces the exact risk the boundary exists to prevent: a code path
 that *looks* like it verifies but that a subtle bug can make bypass
 verification.
 
-If `logiq_mcp` ever grows an import of `logiq.executor`, the guarantee
+If `execgate_mcp` ever grows an import of `execgate.executor`, the guarantee
 "a plan that fails verification cannot reach a handler" becomes
-conditional on `logiq_mcp` always calling the executor correctly. That
+conditional on `execgate_mcp` always calling the executor correctly. That
 is a much weaker claim than "the executor is not reachable from
-`logiq_mcp`."
+`execgate_mcp`."
 
 The same reasoning that produced ADR-0006 applies with more force here,
 because MCP's transport is untrusted in both directions:
@@ -50,19 +50,19 @@ Neither direction is a peer of the trust boundary. Both are data.
 
 ## Decision
 
-`logiq_mcp` is a **leaf-node optional adapter**, structurally identical
-to `logiq_pydantic` and `logiq_ai`.
+`execgate_mcp` is a **leaf-node optional adapter**, structurally identical
+to `execgate_pydantic` and `execgate_ai`.
 
 Concretely:
 
 ### 1. No import of trust-boundary internals
 
-Source files under `src/logiq_mcp/` MUST NOT import from:
+Source files under `src/execgate_mcp/` MUST NOT import from:
 
-- `logiq.verifier`
-- `logiq.executor`
-- `logiq.ir`
-- `logiq._internal`
+- `execgate.verifier`
+- `execgate.executor`
+- `execgate.ir`
+- `execgate._internal`
 
 ### 2. No direct call to bypass functions
 
@@ -72,25 +72,25 @@ Source files MUST NOT call:
 - `_construct_verified_plan`
 - `execute_verified`
 
-The only sanctioned way to run a handler from `logiq_mcp` is
+The only sanctioned way to run a handler from `execgate_mcp` is
 `Logix.run()` or `Logix.execute(verified_plan)`. Both go through the
 full pipeline.
 
 ### 3. Imports from `logiq.*` are allowlisted
 
-Only these public modules may be imported by `logiq_mcp`:
+Only these public modules may be imported by `execgate_mcp`:
 
 - `logiq` (version metadata, top-level re-exports)
-- `logiq.tools` (`ToolSpec`)
-- `logiq.results` (`Result`, `Trace`, `VerificationReport`)
-- `logiq.errors` (`Error`, code constants)
-- `logiq.context` (`ExecutionContext`)
-- `logiq.capabilities` (`Capability` dataclass, `build_capability`)
-- `logiq.engine` (`Logix`)
-- `logiq.schemas` (`Type` constructors, `ObjectType`, `infer`)
-- `logiq.schemas.types`, `logiq.schemas.infer` (submodules of the above)
-- `logiq.approval` (for approval-related call paths)
-- `logiq.policies` (`Allow`, `Deny`, `RequireApproval`)
+- `execgate.tools` (`ToolSpec`)
+- `execgate.results` (`Result`, `Trace`, `VerificationReport`)
+- `execgate.errors` (`Error`, code constants)
+- `execgate.context` (`ExecutionContext`)
+- `execgate.capabilities` (`Capability` dataclass, `build_capability`)
+- `execgate.engine` (`Logix`)
+- `execgate.schemas` (`Type` constructors, `ObjectType`, `infer`)
+- `execgate.schemas.types`, `execgate.schemas.infer` (submodules of the above)
+- `execgate.approval` (for approval-related call paths)
+- `execgate.policies` (`Allow`, `Deny`, `RequireApproval`)
 
 Adding a new core import requires updating this ADR and the allowlist
 in `tests/mcp/test_leaf_node_boundary.py` together.
@@ -99,7 +99,7 @@ in `tests/mcp/test_leaf_node_boundary.py` together.
 
 `tests/mcp/test_leaf_node_boundary.py` performs:
 
-- An AST scan of every `.py` file under `src/logiq_mcp/` for forbidden
+- An AST scan of every `.py` file under `src/execgate_mcp/` for forbidden
   imports.
 - An AST scan for forbidden function calls (`verify_plan`,
   `_construct_verified_plan`, `execute_verified`).
@@ -116,28 +116,28 @@ A PR that weakens this rule is rejected regardless of functionality.
 **Positive:**
 
 - The trust boundary is **structural**, not **conventional**.
-  `logiq_mcp` cannot bypass verification even if a bug tries to — it
+  `execgate_mcp` cannot bypass verification even if a bug tries to — it
   has no reference to the functions that would let it.
 
 - Changing the verifier or executor internals does not require
-  reviewing `logiq_mcp`. The public API it depends on is stable, and
+  reviewing `execgate_mcp`. The public API it depends on is stable, and
   the AST test catches accidental coupling.
 
-- The same rule already governs `logiq_ai` and `logiq_pydantic`. New
+- The same rule already governs `execgate_ai` and `execgate_pydantic`. New
   contributors learn one rule and apply it to every adapter.
 
 - The proxy's correctness reduces to "does `logix.run()` work as
   documented?" — which is already covered by the security test suite.
-  `logiq_mcp` adds no new correctness obligation at the trust
+  `execgate_mcp` adds no new correctness obligation at the trust
   boundary.
 
-- A bug in `logiq_mcp` can produce a malformed plan (rejected by the
+- A bug in `execgate_mcp` can produce a malformed plan (rejected by the
   verifier) or fail to call `run` (a functionality bug), but it cannot
   invoke a handler without the pipeline.
 
 **Negative:**
 
-- **`logiq_mcp` cannot optimize by caching verified plans across calls
+- **`execgate_mcp` cannot optimize by caching verified plans across calls
   or by pre-computing verification results.** Every call pays the full
   pipeline cost. This is accepted: verification is microseconds, and
   handler execution dominates.
@@ -146,10 +146,10 @@ A PR that weakens this rule is rejected regardless of functionality.
   proxy that wants to display the *verified* dependency graph rather
   than re-deriving it. Those features are deferred. If they become
   essential, they belong in `src/logiq/` as public methods, not in
-  `logiq_mcp`.
+  `execgate_mcp`.
 
 - **Dependency on the exact `logiq` public API surface.** If a future
-  release renames `ToolSpec` or changes `Result` fields, `logiq_mcp`
+  release renames `ToolSpec` or changes `Result` fields, `execgate_mcp`
   breaks and must be updated. This is correct: adapters are versioned
   against the core they target.
 
@@ -172,14 +172,14 @@ A PR that weakens this rule is rejected regardless of functionality.
 
 ### Direct verifier/executor access
 
-Allow `logiq_mcp` to import `logiq.verifier` and `logiq.executor` to
+Allow `execgate_mcp` to import `execgate.verifier` and `execgate.executor` to
 avoid "going through `Logix`."
 
 **Rejected:** this defeats the structural guarantee. A bug in
-`logiq_mcp` could produce a plan that passes verification *as
-`logiq_mcp` understands it*, not as the verifier understands it. The
+`execgate_mcp` could produce a plan that passes verification *as
+`execgate_mcp` understands it*, not as the verifier understands it. The
 whole point of ADR-0002 (unforgeable IR) is that no code outside the
-verifier can produce a `VerifiedPlan`; allowing `logiq_mcp` to call the
+verifier can produce a `VerifiedPlan`; allowing `execgate_mcp` to call the
 verifier directly reopens that.
 
 ### In-process verification bypass
@@ -193,16 +193,16 @@ literally true. A cached plan would still need the recheck window to
 run, so the caching would save the static checks (microseconds) while
 risking a stale-plan vulnerability.
 
-### Bundle `logiq_mcp` into core
+### Bundle `execgate_mcp` into core
 
 Ship it as part of `src/logiq/` so it can use internals.
 
-**Rejected:** this would force every Logiq user to install FastMCP,
+**Rejected:** this would force every ExecGate user to install FastMCP,
 breaking the zero-runtime-dependency guarantee (`tests/pydantic/test_core_without_pydantic.py`
 and `tests/mcp/test_core_without_mcp.py` enforce this). It would also
 put MCP's moving API inside the core's release cadence.
 
-### Restrict `logiq_mcp` to server mode only
+### Restrict `execgate_mcp` to server mode only
 
 Don't implement proxy mode at all; document that users should write
 their own proxy.
@@ -216,7 +216,7 @@ less safely.
 ### Expose more internals as public API
 
 Expose `verify_plan`, `execute_verified`, and `_construct_verified_plan`
-publicly so `logiq_mcp` (and anyone else) can use them without breaking
+publicly so `execgate_mcp` (and anyone else) can use them without breaking
 the rule.
 
 **Rejected for 0.1.0:** every public API is a contract that must be
@@ -229,7 +229,7 @@ pipeline, not to expose the verifier.
 
 ### Trust each adapter to "be careful"
 
-Ship `logiq_mcp` without an enforcement test and trust reviewers to
+Ship `execgate_mcp` without an enforcement test and trust reviewers to
 catch violations.
 
 **Rejected:** the guarantee must survive a bug. "Be careful" does not
@@ -244,7 +244,7 @@ they land.
 The leaf-node rule is why `LogixMCPServer` cannot carry approvals. An
 `ApprovalToken` is issued by the application and passed to
 `logix.execute()`. MCP's `tools/call` has no channel for it, and the
-`logiq_mcp` adapter cannot bypass the approval check to accept a
+`execgate_mcp` adapter cannot bypass the approval check to accept a
 token-shaped argument (that would be bypassing verification).
 
 For 0.1.0, the documented workaround is: don't expose approval-required
@@ -275,7 +275,7 @@ Each of these is a future decision, not a 0.1.0 one.
 
 ## Reference
 
-- `src/logiq_mcp/` — the adapter package
+- `src/execgate_mcp/` — the adapter package
 - `tests/mcp/test_leaf_node_boundary.py` — the enforcement
 - `docs/mcp.md` — the integration guide (with §3 for limitations)
 - `docs/adr/0006-adapters-never-touch-trust-boundary.md` — the general

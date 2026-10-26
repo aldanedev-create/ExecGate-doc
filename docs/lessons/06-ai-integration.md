@@ -7,12 +7,12 @@ Below is the full updated file. The changes are concentrated in Step 2 (client s
 
 Make a real AI propose plans. By the end, you'll have a working agent
 loop that sends the catalog to a model, receives a plan, runs it through
-Logiq, feeds the result back, and handles failures with bounded retry.
+ExecGate, feeds the result back, and handles failures with bounded retry.
 
 This lesson uses **OpenRouter** by default — one API key, access to
 OpenAI, Anthropic, Google, and open-weight models through the same
 endpoint. You can swap to a direct provider or a local model later; the
-Logiq side does not change.
+ExecGate side does not change.
 
 **Time:** 45 minutes. **You will build:** ~120 lines of application code,
 ~60 lines of tests. **You will understand:** the five-step loop, multi-turn
@@ -62,7 +62,7 @@ The model is **real**. You will send actual API calls through OpenRouter.
 ```bash
 mkdir -p logiq-lessons/06-ai-integration && cd logiq-lessons/06-ai-integration
 touch agent.py
-pip install "logiq[ai]" openai
+pip install "execgate[ai]" openai
 export OPENROUTER_API_KEY="sk-or-v1-..."
 ```
 
@@ -77,7 +77,7 @@ No other SDK is needed. OpenRouter is OpenAI-compatible, so `pip install openai`
 Same shape as Lesson 01, but simpler.
 
 ```python
-from logiq import Logix, Allow, Deny
+from execgate import Logix, Allow, Deny
 
 logix = Logix()
 
@@ -151,7 +151,7 @@ client = openai.OpenAI(
     api_key=os.environ["OPENROUTER_API_KEY"],
     default_headers={
         "HTTP-Referer": "https://your-app.example.com",
-        "X-Title": "Logiq Lesson 06",
+        "X-Title": "ExecGate Lesson 06",
     },
 )
 ```
@@ -161,7 +161,7 @@ client = openai.OpenAI(
 ## Step 3 — Choose a model
 
 ```python
-from logiq_ai import get_adapter
+from execgate_ai import get_adapter
 
 adapter = get_adapter("openai")   # OpenRouter uses OpenAI's tool shape
 
@@ -231,7 +231,7 @@ Output (approximately):
 [logiq result]: True {'id': 502.0, 'total': 50.0}
 ```
 
-**The model proposed a plan. Logiq verified and executed it.** The
+**The model proposed a plan. ExecGate verified and executed it.** The
 `openai` SDK sent the request to OpenRouter; OpenRouter routed it to the
 model you chose; the model returned a tool call in OpenAI's format;
 `adapter.parse_proposal` extracted the plan; `logix.run` ran it.
@@ -355,7 +355,7 @@ the sensitive value never appears in the plan.
 ## Step 7 — The repair loop
 
 ```python
-from logiq.semantic import RepairLoop, RepairRefused
+from execgate.semantic import RepairLoop, RepairRefused
 
 def agent_turn(messages, user_message, principal="alice"):
     messages = messages + [{"role": "user", "content": user_message}]
@@ -425,7 +425,7 @@ clear rejection.
 
 ---
 
-## Step 8 — Swap providers without changing Logiq
+## Step 8 — Swap providers without changing ExecGate
 
 **Anthropic via OpenRouter** — change the model string:
 
@@ -466,9 +466,9 @@ import os
 
 import openai
 
-from logiq import Logix, Allow, Deny
-from logiq.semantic import RepairLoop, RepairRefused
-from logiq_ai import get_adapter
+from execgate import Logix, Allow, Deny
+from execgate.semantic import RepairLoop, RepairRefused
+from execgate_ai import get_adapter
 
 
 logix = Logix()
@@ -593,7 +593,7 @@ python agent.py
 `qwen/qwen3.6-plus:free` or `meta-llama/llama-3.3-70b-instruct:free`.
 Compare tool-calling quality. Free models vary; some handle the catalog
 well, some propose invalid arguments more often. That variance is the
-model's tool-calling quality, not Logiq's.
+model's tool-calling quality, not ExecGate's.
 
 **2. Try a wrong-provider model.** Change `MODEL` to
 `anthropic/claude-sonnet-4.5` via OpenRouter. The adapter stays

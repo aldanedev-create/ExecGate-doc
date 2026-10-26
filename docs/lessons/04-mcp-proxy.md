@@ -1,6 +1,6 @@
 # Lesson 04 — MCP Proxy
 
-Build a verified proxy in front of an untrusted MCP server. Every call goes through Logiq before being forwarded. By the end, you'll have a working `LogixMCPProxy` that rejects invented tools, malformed arguments, and policy violations.
+Build a verified proxy in front of an untrusted MCP server. Every call goes through ExecGate before being forwarded. By the end, you'll have a working `LogixMCPProxy` that rejects invented tools, malformed arguments, and policy violations.
 
 **Time:** 35 minutes  
 **You will build:** Approximately 40 lines of application code, 80 lines of tests, and one `FakeMCPClient`  
@@ -36,7 +36,7 @@ touch proxy_demo.py test_proxy_demo.py
 Install the MCP integration:
 
 ```bash
-pip install "logiq[mcp]"
+pip install "execgate[mcp]"
 ```
 
 You'll also need `pytest-asyncio` for the asynchronous tests:
@@ -78,7 +78,7 @@ class FakeCallToolResult:
 
 
 class FakeMCPClient:
-    """Stub that implements the MCP client surface used by logiq_mcp."""
+    """Stub that implements the MCP client surface used by execgate_mcp."""
 
     def __init__(self, tools: list[FakeMCPTool]):
         self._tools = tools
@@ -168,15 +168,15 @@ Calls recorded: [('upstream_echo', {'message': 'hi'})]
 
 ## Step 2 — Wrap the upstream with `LogixMCPProxy`
 
-The proxy registers upstream tools as native Logiq capabilities. Calls can then go through Logiq's normal verification and execution pipeline.
+The proxy registers upstream tools as native ExecGate capabilities. Calls can then go through ExecGate's normal verification and execution pipeline.
 
 Add the following imports and example to `proxy_demo.py`, after the stub:
 
 ```python
 import asyncio
 
-from logiq import Logix, Deny
-from logiq_mcp import LogixMCPProxy
+from execgate import Logix, Deny
+from execgate_mcp import LogixMCPProxy
 
 
 async def main():
@@ -266,7 +266,7 @@ Client closed: True
 
 Four things happened:
 
-1. `startup()` fetched the upstream tools and registered them as native Logiq capabilities.
+1. `startup()` fetched the upstream tools and registered them as native ExecGate capabilities.
 2. A valid plan was forwarded to the upstream, which recorded the call.
 3. An unknown tool was rejected before reaching the upstream.
 4. Invalid arguments were rejected before reaching the upstream.
@@ -375,7 +375,7 @@ Literal: GROUNDING_REQUIRED
 
 A fully grounded example needs a read-like upstream tool whose output contains the ID to be used by the delete operation.
 
-The upstream's output in this lesson is serialized as JSON text. If Logiq treats that result as opaque text rather than a structured dictionary, a `$ref` cannot traverse into its JSON contents as though they were a typed object.
+The upstream's output in this lesson is serialized as JSON text. If ExecGate treats that result as opaque text rather than a structured dictionary, a `$ref` cannot traverse into its JSON contents as though they were a typed object.
 
 The lesson's intended point is that grounding rules for wrapped tools follow the same policy model as those for native capabilities, but the usefulness of `$ref` depends on the actual shape of the upstream result.
 
@@ -411,7 +411,7 @@ Literal with grounding: GROUNDING_REQUIRED
 
 ## Step 5 — Handle startup failures
 
-If an upstream tool uses a schema keyword that `logiq_mcp` cannot faithfully convert, `startup()` should raise an error rather than silently weaken validation.
+If an upstream tool uses a schema keyword that `execgate_mcp` cannot faithfully convert, `startup()` should raise an error rather than silently weaken validation.
 
 Try an unsupported schema:
 
@@ -419,7 +419,7 @@ Try an unsupported schema:
 bad_tools = [
     FakeMCPTool(
         name="weird_tool",
-        description="Uses a schema Logiq cannot convert.",
+        description="Uses a schema ExecGate cannot convert.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -461,7 +461,7 @@ The lesson's example schema converter supports these keywords:
 
 Other keywords, such as `$ref`, `oneOf`, `allOf`, `minimum`, and `pattern`, are rejected in the example.
 
-If an upstream needs an unsupported keyword, extend `mcp_schema_to_logix` in `logiq_mcp/adapter.py` and add tests. Do not weaken validation silently.
+If an upstream needs an unsupported keyword, extend `mcp_schema_to_logix` in `execgate_mcp/adapter.py` and add tests. Do not weaken validation silently.
 
 ## Step 6 — The complete application
 
@@ -475,8 +475,8 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from logiq import Deny, Logix
-from logiq_mcp import LogixMCPProxy
+from execgate import Deny, Logix
+from execgate_mcp import LogixMCPProxy
 
 
 # --- Upstream stub ---
@@ -679,8 +679,8 @@ import asyncio
 
 import pytest
 
-from logiq import Deny, Logix
-from logiq_mcp import LogixMCPProxy
+from execgate import Deny, Logix
+from execgate_mcp import LogixMCPProxy
 
 from proxy_demo import FakeMCPClient, FakeMCPTool
 
@@ -857,7 +857,7 @@ Expected result: **5 tests pass**, provided the installed package APIs and clean
 
 You built an MCP proxy that:
 
-- Wraps upstream tools as native Logiq capabilities.
+- Wraps upstream tools as native ExecGate capabilities.
 - Rejects unknown tools before forwarding.
 - Rejects invalid arguments before forwarding.
 - Runs policies on wrapped tools before forwarding.
@@ -886,9 +886,9 @@ The five tests exercise these behaviors.
 
 - `docs/mcp.md`, section 4 — proxy mode reference.
 - `docs/mcp.md`, section 3 — known limitations of MCP server mode.
-- `docs/adr/0007-mcp-leaf-node-boundary.md` — why `logiq_mcp` is a leaf node.
+- `docs/adr/0007-mcp-leaf-node-boundary.md` — why `execgate_mcp` is a leaf node.
 - `tests/mcp/` — the full MCP test suite.
-- `docs/security.md`, section “What Logiq does not protect against” — limitations of MCP proxy mode.
+- `docs/security.md`, section “What ExecGate does not protect against” — limitations of MCP proxy mode.
 
 ## Next lesson
 

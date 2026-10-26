@@ -10,26 +10,26 @@
 
 ## Context
 
-Logiq has three optional adapters:
+ExecGate has three optional adapters:
 
-- `logiq_pydantic` — turns Pydantic model classes into capability schemas.
-- `logiq_ai` — translates the capability catalog into provider-specific
+- `execgate_pydantic` — turns Pydantic model classes into capability schemas.
+- `execgate_ai` — translates the capability catalog into provider-specific
   tool-call shapes.
-- `logiq_mcp` — exposes capabilities to MCP clients (server mode) and
+- `execgate_mcp` — exposes capabilities to MCP clients (server mode) and
   verifies untrusted upstream MCP servers (proxy mode).
 
-Each adapter needs to interact with Logiq's public API. `logiq_pydantic`
-needs to convert annotations; `logiq_ai` needs to read capabilities;
-`logiq_mcp` needs to run plans and read results.
+Each adapter needs to interact with ExecGate's public API. `execgate_pydantic`
+needs to convert annotations; `execgate_ai` needs to read capabilities;
+`execgate_mcp` needs to run plans and read results.
 
 The obvious shape for an adapter is: "it's a module that lives in
 `src/logiq_*` and does what it needs." The obvious temptation, once an
-adapter needs something Logiq exposes only through the verifier or
+adapter needs something ExecGate exposes only through the verifier or
 executor, is to import from those modules directly.
 
 That temptation is a security problem.
 
-If an adapter could import `logiq.executor`, it could invoke
+If an adapter could import `execgate.executor`, it could invoke
 `execute_verified` directly — bypassing `Logix.run()` and `Logix.execute()`.
 A bug in the adapter could produce a plan-shaped object that the adapter
 *believes* is verified, pass it to the executor, and the executor would
@@ -37,11 +37,11 @@ accept it. The structural guarantee "the executor accepts only
 `VerifiedPlan`" is bypassed because the adapter constructed the
 `VerifiedPlan` instead of the verifier doing it.
 
-If an adapter could import `logiq.verifier`, it could call `verify_plan`
+If an adapter could import `execgate.verifier`, it could call `verify_plan`
 directly and construct a `VerifiedPlan` outside the pipeline. Same
 problem.
 
-If an adapter could import `logiq.ir`, it could construct `VerifiedPlan`
+If an adapter could import `execgate.ir`, it could construct `VerifiedPlan`
 objects with `_construct_verified_plan`.
 
 The rule that closes all of this: **adapters are leaf nodes.** They do
@@ -58,10 +58,10 @@ API.
 1. **No import from trust-boundary internals.**
 
    Source files under `src/logiq_*/` MUST NOT import from:
-   - `logiq.verifier`
-   - `logiq.executor`
-   - `logiq.ir`
-   - `logiq._internal`
+   - `execgate.verifier`
+   - `execgate.executor`
+   - `execgate.ir`
+   - `execgate._internal`
 
 2. **No direct call to bypass functions.**
 
@@ -81,10 +81,10 @@ API.
 
 4. **Enforcement.**
 
-   - `tests/mcp/test_leaf_node_boundary.py` AST-scans `src/logiq_mcp/`
+   - `tests/mcp/test_leaf_node_boundary.py` AST-scans `src/execgate_mcp/`
      for forbidden imports and forbidden calls, and asserts every
      `logiq.*` import is on the allowlist.
-   - The same pattern applies to `logiq_ai` and `logiq_pydantic` via
+   - The same pattern applies to `execgate_ai` and `execgate_pydantic` via
      their conformance tests.
 
 A PR that weakens this rule is rejected regardless of functionality.
@@ -149,7 +149,7 @@ from an adapter that constructed one outside the verifier" — which is no
 guarantee at all.
 
 **Ship adapters in the core package, so they can use internals freely.**
-Rejected. `import logiq` would then require Pydantic and/or FastMCP, or
+Rejected. `import execgate` would then require Pydantic and/or FastMCP, or
 would need optional imports scattered through the core. The core must
 stay stdlib-only (`tests/pydantic/test_core_without_pydantic.py` and
 `tests/mcp/test_core_without_mcp.py` enforce this). Bundling adapters

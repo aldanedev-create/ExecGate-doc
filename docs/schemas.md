@@ -1,6 +1,6 @@
 # Schemas
 
-How Logiq derives a contract from Python annotations, enforces it at runtime, and exports it as JSON Schema for AI catalogs.
+How ExecGate derives a contract from Python annotations, enforces it at runtime, and exports it as JSON Schema for AI catalogs.
 
 The governing rule is ADR-0003: **reject rather than silently weaken.**
 
@@ -15,7 +15,7 @@ A capability's contract has two parts:
 - **Input schema** — derived from the handler's parameter annotations. Every parameter must be annotated; unannotated parameters are rejected at registration.
 - **Output schema** — derived from the return annotation. An unannotated return means "no output validation"; the handler's return value passes through without a check.
 
-Both are `logiq.schemas.Type` instances. The **same** `Type` is used for:
+Both are `execgate.schemas.Type` instances. The **same** `Type` is used for:
 
 - Runtime input validation (before the handler runs).
 - Runtime output validation (after the handler runs).
@@ -29,7 +29,7 @@ The same schema is used in all three places, so the catalog and the verifier can
 
 ### Primitives
 
-| Python | Logiq type | JSON Schema |
+| Python | ExecGate type | JSON Schema |
 |---|---|---|
 | `int` | `IntType` | `{"type": "integer"}` |
 | `float` | `FloatType` | `{"type": "number"}` |
@@ -42,7 +42,7 @@ The same schema is used in all three places, so the catalog and the verifier can
 
 ### Containers
 
-| Python | Logiq type | JSON Schema |
+| Python | ExecGate type | JSON Schema |
 |---|---|---|
 | `list[X]` | `ListType(item_type=X)` | `{"type": "array", "items": ...}` |
 | `dict[str, X]` | `DictType(value_type=X)` | `{"type": "object", "additionalProperties": ...}` |
@@ -53,14 +53,14 @@ Bare `dict` and bare `list` are rejected. Use the parametrized form.
 
 ### Unions
 
-| Python | Logiq type | JSON Schema |
+| Python | ExecGate type | JSON Schema |
 |---|---|---|
 | `Optional[X]` | `UnionType((X, NoneType()))` | `{"anyOf": [..., {"type": "null"}]}` |
 | `Union[X, Y, ...]` | `UnionType((X, Y, ...))` | `{"anyOf": [...]}` |
 
 ### Literals
 
-| Python | Logiq type | JSON Schema |
+| Python | ExecGate type | JSON Schema |
 |---|---|---|
 | `Literal["a", "b"]` | `LiteralType(("a", "b"))` | `{"enum": ["a", "b"]}` |
 
@@ -72,7 +72,7 @@ Constraints attach to a base type via `typing.Annotated`:
 
 ```python
 from typing import Annotated
-from logiq.schemas import Gt, Le, MinLength, MaxLength, Pattern
+from execgate.schemas import Gt, Le, MinLength, MaxLength, Pattern
 
 def issue_refund(
     amount: Annotated[float, Gt(0), Le(10_000)],
@@ -123,9 +123,9 @@ Each layer is validated.
 | `Decimal` | `"unsupported annotation: Decimal"` | Preserving precision requires a specific JSON encoding choice |
 | `datetime`, `date` | `"unsupported annotation: datetime"` | Preserving timezone semantics requires a specific encoding |
 | Enum classes | `"unsupported annotation: <EnumName>"` | Use `Literal["a", "b"]` instead |
-| `TypedDict` | `"unsupported annotation: <name>"` | Use a Pydantic model via `logiq_pydantic` |
-| Dataclasses | `"unsupported annotation: <name>"` | Use a Pydantic model via `logiq_pydantic` |
-| Pydantic models | Handled by `logiq_pydantic` | Not supported natively; the optional adapter enables them |
+| `TypedDict` | `"unsupported annotation: <name>"` | Use a Pydantic model via `execgate_pydantic` |
+| Dataclasses | `"unsupported annotation: <name>"` | Use a Pydantic model via `execgate_pydantic` |
+| Pydantic models | Handled by `execgate_pydantic` | Not supported natively; the optional adapter enables them |
 | Unannotated parameter | `"missing annotation"` | Every input must have a contract |
 | Unresolved string annotation | `"could not be resolved to a type"` | Forward references must be resolvable at registration time |
 
@@ -134,17 +134,17 @@ The pattern is deliberate: anything that does not have an unambiguous JSON repre
 If you need a type in this list, either:
 
 - Use the closest supported type and do the conversion in the handler (e.g., take `str` for ISO-8601 datetimes and parse inside).
-- Use `logiq_pydantic` and declare a Pydantic model that carries the conversion logic.
+- Use `execgate_pydantic` and declare a Pydantic model that carries the conversion logic.
 
 ---
 
 ## 4. Strict type semantics (ADR-0003)
 
-Three surprises that Logiq handles deliberately:
+Three surprises that ExecGate handles deliberately:
 
 ### `bool` is not `int`
 
-In Python, `isinstance(True, int) == True`. In Logiq, `IntType` explicitly rejects `bool`:
+In Python, `isinstance(True, int) == True`. In ExecGate, `IntType` explicitly rejects `bool`:
 
 ```python
 IntType().validate(True)  # error: expected int, got bool
@@ -240,7 +240,7 @@ def issue_refund(
     ...
 ```
 
-`logiq.schemas.for_capability("issue_refund").input`:
+`execgate.schemas.for_capability("issue_refund").input`:
 
 ```json
 {
@@ -311,7 +311,7 @@ Every constraint reports its own error. A value that fails two constraints produ
 `build_capability(fn, ...)` runs the full check:
 
 1. `inspect_capability(fn)` — structural checks (variadics, async, unbound methods, non-callables).
-2. `_maybe_transform_pydantic(info)` — if `logiq_pydantic` is importable, transform model annotations into `PydanticType`.
+2. `_maybe_transform_pydantic(info)` — if `execgate_pydantic` is importable, transform model annotations into `PydanticType`.
 3. `find_unsupported_annotations(info)` — aggregate every annotation problem into a single error message.
 4. `infer_input_schema(info.parameters)` — build the input `ObjectType`.
 5. `infer_output_schema(info.return_annotation)` — build the output `Type` or `None`.
@@ -330,7 +330,7 @@ The aggregated form is much better than failing on the first problem, because th
 
 ---
 
-## 9. What changes when `logiq_pydantic` is installed
+## 9. What changes when `execgate_pydantic` is installed
 
 Registration is unchanged from the user's perspective, but a few things behave differently under the hood:
 
@@ -338,10 +338,10 @@ Registration is unchanged from the user's perspective, but a few things behave d
 - `Annotated` constraints on a model are dropped. The `Annotated` wrapper is unwrapped to the model; use `Field(...)` inside the model for constraints.
 - Nested models are wrapped recursively. `list[Model]`, `dict[str, Model]`, `Optional[Model]` all become `ListType(PydanticType)`, `DictType(PydanticType)`, `UnionType((PydanticType, NoneType))`.
 - `Type.walk` traverses into model fields. A `$ref` into a step whose output is a Pydantic model resolves through `PydanticType.walk`. Its return value is normalized to a `dict` before storage, so `$ref` traversal at runtime also works.
-- If `logiq_pydantic` is not installed, a Pydantic model in a signature is rejected with `"unsupported annotation: ModelName"`. The error message names the model, not the adapter; the developer has to know that the fix is `pip install "logiq[pydantic]"`. This is documented in `docs/pydantic.md`.
+- If `execgate_pydantic` is not installed, a Pydantic model in a signature is rejected with `"unsupported annotation: ModelName"`. The error message names the model, not the adapter; the developer has to know that the fix is `pip install "execgate[pydantic]"`. This is documented in `docs/pydantic.md`.
 
 ---
 
 ## 10. The type system in one sentence
 
-Every annotation either has a faithful JSON Schema representation that Logiq enforces at runtime, or is rejected at registration with a clear error — there is no silent weakening, no coercion, and no implicit acceptance of types that cannot be round-tripped through JSON.
+Every annotation either has a faithful JSON Schema representation that ExecGate enforces at runtime, or is rejected at registration with a clear error — there is no silent weakening, no coercion, and no implicit acceptance of types that cannot be round-tripped through JSON.

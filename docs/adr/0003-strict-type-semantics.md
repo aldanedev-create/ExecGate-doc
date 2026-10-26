@@ -12,7 +12,7 @@
 
 ## Context
 
-Logiq validates plans before handlers run. The validator's job is to
+ExecGate validates plans before handlers run. The validator's job is to
 prove, as strongly as it can, that a handler will receive values of the
 types it declared. "As strongly as it can" turns out to require two
 uncomfortable choices:
@@ -27,7 +27,7 @@ uncomfortable choices:
    back to `Any`, coercing a string to an int, ignoring an unknown
    annotation. That is how a validator stops being a validator.
 
-Both choices are correct for Logiq because the whole product exists to
+Both choices are correct for ExecGate because the whole product exists to
 make a *testable* claim: **a plan that fails verification does not reach
 a handler.** If the schema engine could silently accept what it doesn't
 understand, the claim would become "a plan that fails the checks we
@@ -56,7 +56,7 @@ claim.
   `SchemaInferenceError` if `describe_unsupported` is non-empty.
 - `build_capability` aggregates every annotation problem into a single
   `TypeError` before constructing the `Capability`.
-- `mcp_schema_to_logix` (in `logiq_mcp`) rejects unsupported JSON Schema
+- `mcp_schema_to_logix` (in `execgate_mcp`) rejects unsupported JSON Schema
   keywords at proxy startup rather than downgrading to `AnyType`.
 
 **3. Document what is unsupported.**
@@ -81,7 +81,7 @@ claim.
   declared types.
 - No silent fallbacks. Every acceptance is deliberate.
 - The strictness is self-documenting: `IntType().validate(True)` returning
-  an error *teaches* the developer that `True` is not an int in Logiq's
+  an error *teaches* the developer that `True` is not an int in ExecGate's
   world.
 - Test suite has a small set of "expected rejection" cases rather than a
   sprawling "coercion matrix."
@@ -116,7 +116,7 @@ it is. The cost of strictness is a clear error message; the cost of
 permissiveness is a silent bug three layers deep.
 
 **Coerce `int` to `float` when the destination declares `float`.**
-Rejected. Logiq is a verification boundary, not a coercion layer. Silent
+Rejected. ExecGate is a verification boundary, not a coercion layer. Silent
 coercion means the schema a handler declares and the values it actually
 receives can differ, which is exactly the property that makes schema
 validation useful.

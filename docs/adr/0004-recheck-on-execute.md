@@ -27,7 +27,7 @@ guarantee "a plan that fails verification does not reach a handler" is
 true in the sense that verification was a check that ran; it is not
 true in the sense that anything meaningful was verified.
 
-That is exactly the failure mode Logiq is designed to prevent.
+That is exactly the failure mode ExecGate is designed to prevent.
 
 ---
 
@@ -151,4 +151,4 @@ executes.
 
 **`execute()` without recheck window.** Rejected. That would make
 `execute()` accept untrusted plans without verification, which is the
-whole thing Logiq prevents.
+whole thing ExecGate prevents.

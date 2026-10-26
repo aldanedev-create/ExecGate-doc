@@ -1,6 +1,6 @@
 # AI Integration
 
-How a Logiq engine talks to an AI, and why provider adapters are convenience — not a requirement.
+How a ExecGate engine talks to an AI, and why provider adapters are convenience — not a requirement.
 
 The core guarantee: **the trust boundary does not know or care which model produced a proposal.** `logix.run(plan)` accepts any JSON-shaped plan. A hand-written dictionary, a plan from OpenAI, or a plan from a local model — they all flow through the identical pipeline. See `tests/integration/test_any_json_producer.py`.
 
@@ -14,9 +14,9 @@ Every AI integration, regardless of provider, has the same shape:
 2. **Get the catalog** — `logix.tools.describe()` or `.format(provider)`.
 3. **Send the catalog to the model** — via the provider's API.
 4. **Receive the model's proposal** — usually as JSON.
-5. **Run it through Logiq** — `logix.run(plan, context=ctx)`.
+5. **Run it through ExecGate** — `logix.run(plan, context=ctx)`.
 
-Steps 1, 2, and 5 are Logiq. Steps 3 and 4 belong to the application. The provider-specific part is the *shape* of the catalog sent (step 3) and the *shape* of the response (step 4). That's what `logiq_ai` handles.
+Steps 1, 2, and 5 are ExecGate. Steps 3 and 4 belong to the application. The provider-specific part is the *shape* of the catalog sent (step 3) and the *shape* of the response (step 4). That's what `execgate_ai` handles.
 
 ---
 
@@ -57,10 +57,10 @@ The `input_schema` is the exact schema the verifier enforces. The catalog and th
 
 ## 3. Provider adapters
 
-`logiq_ai` provides provider-specific formatting. It is a leaf node (ADR-0006) and has zero runtime dependencies — it does no HTTP requests and imports no SDK. It only shapes JSON.
+`execgate_ai` provides provider-specific formatting. It is a leaf node (ADR-0006) and has zero runtime dependencies — it does no HTTP requests and imports no SDK. It only shapes JSON.
 
 ```python
-from logiq_ai import get_adapter
+from execgate_ai import get_adapter
 
 adapter = get_adapter("openai")
 tools = adapter.format_tools(logix.tools.describe())
@@ -128,8 +128,8 @@ The parser is the boundary; the adapter is convenience.
 import json
 import openai
 
-from logiq import Logix
-from logiq_ai import get_adapter
+from execgate import Logix
+from execgate_ai import get_adapter
 
 
 logix = Logix()
@@ -205,7 +205,7 @@ The same shape, with a different API:
 ```python
 import anthropic
 
-from logiq_ai import get_adapter
+from execgate_ai import get_adapter
 
 
 adapter = get_adapter("anthropic")
@@ -232,8 +232,8 @@ Anthropic's input field is already a dictionary, so no JSON-string parsing is ne
 For Ollama, llama.cpp, or any local server that emits text but has no tool-calling API:
 
 ```python
-from logiq_ai import get_adapter
-from logiq_ai.prompt_json_mode import build
+from execgate_ai import get_adapter
+from execgate_ai.prompt_json_mode import build
 
 
 adapter = get_adapter("local")
@@ -278,8 +278,8 @@ Approximately 30 lines. See `docs/writing-an-adapter.md` for the full walkthroug
 
 The short version:
 
-1. Create `src/logiq_ai/providers/<name>.py` with a class that implements `ProviderAdapter`.
-2. Register it in `logiq_ai/registry.py::_PROVIDERS`.
+1. Create `src/execgate_ai/providers/<name>.py` with a class that implements `ProviderAdapter`.
+2. Register it in `execgate_ai/registry.py::_PROVIDERS`.
 3. Add `tests/adapters/test_<name>.py`, subclassing `AdapterContractMixin`.
 
 The conformance mixin enforces:
@@ -301,7 +301,7 @@ The model call and the tool call form a loop. A single-shot plan is a special ca
 ```python
 import json
 
-from logiq.semantic import RepairLoop, RepairRefused
+from execgate.semantic import RepairLoop, RepairRefused
 
 
 loop = RepairLoop(max_attempts=3, registry=logix.registry)
@@ -402,7 +402,7 @@ def test_handwritten_plan_gets_same_guarantees(logix):
 
 ---
 
-## 12. What `logiq_ai` does not do
+## 12. What `execgate_ai` does not do
 
 - **Does not make model calls.** The application has the SDK; the adapter shapes data.
 - **Does not stream.** Tool calls arrive complete in a single response for all supported providers. Streaming is an application concern: collect the deltas, then call `parse_proposal` on the assembled response.

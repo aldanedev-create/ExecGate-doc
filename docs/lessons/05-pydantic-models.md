@@ -27,7 +27,7 @@ The critical properties:
 mkdir -p logiq-lessons/05-pydantic-models && cd logiq-lessons/05-pydantic-models
 touch models.py capabilities.py test_capabilities.py
 
-pip install "logiq[pydantic]"
+pip install "execgate[pydantic]"
 ```
 
 ## Step 1 — Define your existing Pydantic models
@@ -76,9 +76,9 @@ You don't want to redeclare them with `Annotated[int, Gt(0), Le(100)]`. You want
 Create `capabilities.py`:
 
 ```python
-"""Logiq capabilities built from existing Pydantic models."""
+"""ExecGate capabilities built from existing Pydantic models."""
 
-from logiq import Logix
+from execgate import Logix
 
 from models import Address, CreateOrder, Order
 
@@ -101,7 +101,7 @@ Two things are different from the pure-native version:
 - There is no `Field(ge=0)` in the capability signature. The constraint lives in the Pydantic model.
 - `Address` is imported at the top because the handler uses it.
 
-Registration works because Logiq detects the Pydantic models and wraps them as `PydanticType` instances.
+Registration works because ExecGate detects the Pydantic models and wraps them as `PydanticType` instances.
 
 Try it:
 
@@ -233,7 +233,7 @@ Invalid: False
 Error: SCHEMA_VALIDATION_FAILED Value error, Input should be less than or equal to 100 (less_than_equal)
 ```
 
-Pydantic's validation error is translated into a Logiq `SCHEMA_VALIDATION_FAILED` error. The handler is not invoked.
+Pydantic's validation error is translated into a ExecGate `SCHEMA_VALIDATION_FAILED` error. The handler is not invoked.
 
 The path in `result.errors[0].path` identifies the field; for this example, it is `with.order.quantity`.
 
@@ -256,7 +256,7 @@ SCHEMA_VALIDATION_FAILED Field required (missing)
 
 ## Step 5 — Use `$ref` with a model-typed output
 
-Multi-step plans can reference fields in a model's output. The verifier walks through `PydanticType.walk`, which resolves field names to their corresponding Logiq types.
+Multi-step plans can reference fields in a model's output. The verifier walks through `PydanticType.walk`, which resolves field names to their corresponding ExecGate types.
 
 Add these capabilities to `capabilities.py`:
 
@@ -391,7 +391,7 @@ $ref into list[Model]: False
 Error: INVALID_REFERENCE
 ```
 
-`PydanticType.walk("items")` returns `None` in this scenario. The field's type is `list[LineItem]`, and `walk` cannot traverse a `list[Model]` because the item type is a Pydantic model rather than a native Logiq type.
+`PydanticType.walk("items")` returns `None` in this scenario. The field's type is `list[LineItem]`, and `walk` cannot traverse a `list[Model]` because the item type is a Pydantic model rather than a native ExecGate type.
 
 This limitation is documented in `docs/pydantic.md` §4.
 
@@ -411,10 +411,10 @@ The trade-off is that you lose Pydantic's nested validation for the list items. 
 
 ## Step 7 — Configure `HandlerMode`
 
-`HandlerMode.VALUES` passes plain dictionaries to handlers instead of model instances. This is useful when a handler shouldn't depend on Pydantic or when the same handler is used through both Logiq and a non-Pydantic path.
+`HandlerMode.VALUES` passes plain dictionaries to handlers instead of model instances. This is useful when a handler shouldn't depend on Pydantic or when the same handler is used through both ExecGate and a non-Pydantic path.
 
 ```python
-from logiq_pydantic import HandlerMode, set_handler_mode
+from execgate_pydantic import HandlerMode, set_handler_mode
 
 # Default: handlers receive model instances.
 set_handler_mode(HandlerMode.MODEL)
@@ -466,11 +466,11 @@ Set the mode back to `MODEL` after the demonstration, or leave it configured as 
 The following is the complete `capabilities.py` file. It uses the models from `models.py`.
 
 ```python
-"""Logiq capabilities built from existing Pydantic models."""
+"""ExecGate capabilities built from existing Pydantic models."""
 
 import json
 
-from logiq import Logix
+from execgate import Logix
 
 from models import Address, CreateOrder, LineItem, Order, OrderWithItems
 
@@ -605,7 +605,7 @@ Create `test_capabilities.py`:
 
 import pytest
 
-from logiq_pydantic import HandlerMode, set_handler_mode
+from execgate_pydantic import HandlerMode, set_handler_mode
 
 from capabilities import logix
 from models import CreateOrder
@@ -765,14 +765,14 @@ The eight tests cover the examples and limitations in this lesson.
 
 3. **Reuse a model across capabilities.** Use `CreateOrder` as input to both `prepare_order` and a second capability, `preview_order`. Does Pydantic validate it twice? Each `logix.run` call validates independently.
 
-4. **Try a Pydantic v1 model.** `logiq_pydantic` requires `pydantic>=2,<3`. If your application still uses Pydantic v1, this adapter does not work. Options include upgrading to Pydantic v2 or using native `Annotated` types instead. There is no v1 support in version `0.1.0`.
+4. **Try a Pydantic v1 model.** `execgate_pydantic` requires `pydantic>=2,<3`. If your application still uses Pydantic v1, this adapter does not work. Options include upgrading to Pydantic v2 or using native `Annotated` types instead. There is no v1 support in version `0.1.0`.
 
 ## Where to read more
 
 - `docs/pydantic.md` — the full adapter guide, including supported and unsupported patterns.
-- `docs/schemas.md` §9 — what changes when `logiq_pydantic` is installed.
+- `docs/schemas.md` §9 — what changes when `execgate_pydantic` is installed.
 - `docs/ai-integration.md` — how the catalog works and why the schema comes from Pydantic unchanged.
-- `src/logiq_pydantic/` — the adapter source.
+- `src/execgate_pydantic/` — the adapter source.
 - `tests/pydantic/` — the adapter tests.
 
 ## Next steps
@@ -785,7 +785,7 @@ You've completed the  lesson 5. You've built:
 - An MCP proxy verifying untrusted upstream tools.
 - A Pydantic integration reusing existing domain models.
 
-That covers the full surface of Logiq. The reference docs — `docs/architecture.md`, `docs/system-design.md`, and `docs/security.md` — will make more sense now.
+That covers the full surface of ExecGate. The reference docs — `docs/architecture.md`, `docs/system-design.md`, and `docs/security.md` — will make more sense now.
 
 If you're building for production, read `docs/production-guide.md` next.
 

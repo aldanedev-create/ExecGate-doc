@@ -35,7 +35,7 @@ Every one of those must be inert data. None may become executable.
 
 ## Decision
 
-**Logiq never `eval`s, `exec`s, or `__import__`s model-supplied data.**
+**ExecGate never `eval`s, `exec`s, or `__import__`s model-supplied data.**
 
 Concretely:
 
@@ -51,8 +51,8 @@ Concretely:
 
 3. **String arguments are data.** A handler that takes a `str` gets the
    string as-is. If the handler passes it to a subprocess, the handler
-   is responsible for `shell=False` and list-args — Logiq does not
-   sanitize string contents. But Logiq also does not interpret them.
+   is responsible for `shell=False` and list-args — ExecGate does not
+   sanitize string contents. But ExecGate also does not interpret them.
 
 4. **`$ref` is data.** The grammar is parsed by `references.parse_reference`,
    which uses a small regex and a dotted-path splitter. `$ref` values
@@ -95,7 +95,7 @@ Concretely:
   expose a capability that does the arithmetic.
 
 These constraints are the point. Anything that would let the model
-compute is a channel for the model to program. Logiq is a verification
+compute is a channel for the model to program. ExecGate is a verification
 boundary, not a runtime.
 
 ---
@@ -103,7 +103,7 @@ boundary, not a runtime.
 ## Alternatives considered
 
 **Sandboxed `eval` with a restricted `__builtins__`.** Rejected. Every
-sandboxed evaluator is one bug away from a bypass. Logiq should not
+sandboxed evaluator is one bug away from a bypass. ExecGate should not
 carry that bug surface.
 
 **Attribute dispatch with an allowlist.** Rejected. Even with an

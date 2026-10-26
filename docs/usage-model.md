@@ -16,16 +16,16 @@ see `api-reference.md`. This document is about *roles*.
 |---|---|---|
 | **Developer** | capabilities, schemas, policies, approvals, provider choice | trusted |
 | **AI** | which capability, which args, what order | untrusted data |
-| **Logiq** | the boundary between them | trusted, deterministic |
+| **ExecGate** | the boundary between them | trusted, deterministic |
 
-The developer never hands the AI a function reference or a `Logiq`
+The developer never hands the AI a function reference or a `ExecGate`
 handle. The AI never receives `execute()`, the registry, or handler
 source. The *application* sits between them and only ever passes the
-AI's raw proposal to Logiq.
+AI's raw proposal to ExecGate.
 
 The three-party split is the whole point. A library that lets the AI
 call handlers directly is a tool-calling framework. A library that lets
-the developer call handlers through a verified boundary is Logiq.
+the developer call handlers through a verified boundary is ExecGate.
 
 ---
 
@@ -36,7 +36,7 @@ The developer's work has five steps. Most applications stop at step 3.
 ### Step 1 — Create a runtime and register capabilities
 
 ```python
-from logiq import Logix
+from execgate import Logix
 
 logix = Logix()
 
@@ -67,7 +67,7 @@ That's the point — silent weakening is worse than a loud error.
 Live-state authorization:
 
 ```python
-from logiq import Allow, Deny
+from execgate import Allow, Deny
 
 def refund_policy(args, ctx):
     order = db.orders.get(args["order_id"])
@@ -93,7 +93,7 @@ logix.grounding(require_ref_for=["issue_refund.amount"])
 ```
 
 Each policy is a small, composable piece. The developer declares what is
-permitted; Logiq enforces it at execute time.
+permitted; ExecGate enforces it at execute time.
 
 ### Step 3 — Get the catalog for the AI
 
@@ -123,7 +123,7 @@ It does **not** contain:
 The developer's application owns the AI call:
 
 ```python
-from logiq_ai import get_adapter
+from execgate_ai import get_adapter
 
 adapter = get_adapter("openai")
 
@@ -163,7 +163,7 @@ The developer writes the loop that:
 
 - Sends the catalog to the AI.
 - Receives a proposal.
-- Runs it through Logiq.
+- Runs it through ExecGate.
 - Returns the result to the AI.
 - Handles failures.
 - Inserts approval gates (optionally).
@@ -186,8 +186,8 @@ def handle(user_msg, principal):
     return format_errors(result.errors)
 ```
 
-Logiq does not own this loop. The application owns the model call, the
-conversation state, the retry policy, and the user-facing output. Logiq
+ExecGate does not own this loop. The application owns the model call, the
+conversation state, the retry policy, and the user-facing output. ExecGate
 owns the boundary the plan crosses.
 
 ---
@@ -225,7 +225,7 @@ The AI's output never includes:
 - An approval token.
 - A reference to the handler.
 - A reference to the registry.
-- A reference to `Logiq` itself.
+- A reference to `ExecGate` itself.
 
 If a model tries to include those, the parser rejects them as unknown
 top-level fields. The AI cannot bypass the boundary by asserting the
@@ -233,7 +233,7 @@ boundary was crossed.
 
 ### 3. Interpret the structured result
 
-Logiq returns a `Result`:
+ExecGate returns a `Result`:
 
 ```json
 {"ok": true, "value": {...}}
@@ -407,7 +407,7 @@ trust-side, and every one of those omissions is deliberate.
 
 ## 7. The five places where the developer inserts a decision
 
-Logiq's boundary is a pipeline. There are five points where the
+ExecGate's boundary is a pipeline. There are five points where the
 developer can insert application-specific behavior:
 
 | Point | Mechanism | What it does |
@@ -419,8 +419,8 @@ developer can insert application-specific behavior:
 | Recheck — approval | `logix.require_approval(...)` | Human approval required |
 | Pre-execution (external) | `logix.verify()` + app gate | Human approval before `execute()` |
 
-The first five are Logiq concepts. The sixth is the application's choice
-to split `verify()` and `execute()` for a human gate. Logiq supports it
+The first five are ExecGate concepts. The sixth is the application's choice
+to split `verify()` and `execute()` for a human gate. ExecGate supports it
 by providing both methods, but it does not implement the human gate —
 that's the application's job.
 
@@ -428,7 +428,7 @@ that's the application's job.
 
 ## 8. The three levels of complexity
 
-Logiq offers three levels of use. Each adds controls without changing
+ExecGate offers three levels of use. Each adds controls without changing
 the core programming model.
 
 ### Level 1 — no AI yet
@@ -443,7 +443,7 @@ def add(a: int, b: int) -> int:
 result = logix.run({"call": "add", "with": {"a": 1, "b": 2}})
 ```
 
-Logiq is a schema-enforcing dispatcher. Useful on its own for scripts,
+ExecGate is a schema-enforcing dispatcher. Useful on its own for scripts,
 CLI tools, and webhook handlers. No AI involved.
 
 ### Level 2 — AI tool-calling
@@ -456,7 +456,7 @@ result = logix.run(plan)
 ```
 
 The common case. The AI proposes, the application runs the plan through
-Logiq.
+ExecGate.
 
 ### Level 3 — production agent
 
@@ -483,10 +483,10 @@ same catalog. Level 3 adds control, not a different programming model.
 ## 9. The one-sentence summary
 
 > The developer declares what is possible and what is permitted. The AI
-> chooses what to attempt. Logiq decides what actually happens.
+> chooses what to attempt. ExecGate decides what actually happens.
 
 The developer's job is capability and policy. The AI's job is intent.
-Logiq's job is the boundary between them — and that boundary never
+ExecGate's job is the boundary between them — and that boundary never
 trusts the AI's output, only verifies it.
 
 ---
@@ -503,14 +503,14 @@ could be:
 - Another service producing plan-shaped data.
 
 The trust model is identical for all of them. The AI is *whatever
-produces an untrusted plan*. Logiq does not know or care which model
+produces an untrusted plan*. ExecGate does not know or care which model
 produced it.
 
-This matters because it tells you when Logiq is useful and when it
+This matters because it tells you when ExecGate is useful and when it
 isn't. If the plan comes from a trusted source that constructs it
-correctly, Logiq is a schema-enforcing dispatcher (useful, but you don't
+correctly, ExecGate is a schema-enforcing dispatcher (useful, but you don't
 need the AI integration). If the plan could be malformed, adversarial,
-or hallucinated, Logiq is the boundary that makes the transition from
+or hallucinated, ExecGate is the boundary that makes the transition from
 untrusted data to trusted execution safe.
 
 ---

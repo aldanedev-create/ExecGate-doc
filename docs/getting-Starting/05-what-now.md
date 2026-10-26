@@ -12,7 +12,7 @@ At this point you have:
 
 - **Registered capabilities** — Python functions with inferred schemas.
 - **Run plans** — single-call and multi-step, with `$ref` references.
-- **Sent a catalog to an AI** — the model proposes JSON, and Logiq verifies it.
+- **Sent a catalog to an AI** — the model proposes JSON, and ExecGate verifies it.
 - **Handled failures** — `UNKNOWN_CAPABILITY`, `SCHEMA_VALIDATION_FAILED`, and `GROUNDING_REQUIRED`.
 
 That's Level 2. It's enough for a working application.
@@ -56,7 +56,7 @@ Your domain objects are Pydantic models. You want to use them as capability sche
 **Install:**
 
 ```bash
-pip install "logiq[pydantic]"
+pip install "execgate[pydantic]"
 ```
 
 ### Path C: "I'm exposing capabilities to MCP clients"
@@ -71,7 +71,7 @@ Claude Desktop, Cursor, or your own MCP client needs to call your capabilities.
 **Install:**
 
 ```bash
-pip install "logiq[mcp]"
+pip install "execgate[mcp]"
 ```
 
 **Watch out:** Capabilities with `requires_approval=True` are unreachable over MCP server mode. See `docs/mcp.md` §3.1. Expose those through direct `logix.run()` or `logix.execute()` calls in your application.
@@ -88,7 +88,7 @@ You want to add a verification layer in front of an MCP server you don't control
 **Install:**
 
 ```bash
-pip install "logiq[mcp]"
+pip install "execgate[mcp]"
 ```
 
 **Note:** The proxy rejects upstream schemas it cannot faithfully convert, including `oneOf`, `$ref`, and constraint keywords. If the upstream uses those, the proxy will refuse to start. That's deliberate.
@@ -107,7 +107,7 @@ Your AI provider isn't OpenAI, Anthropic, Gemini, or local. You want a first-cla
 
 ## Common pitfalls
 
-From the hands-on report and from watching developers use Logiq. If you hit one of these, you're not alone.
+From the hands-on report and from watching developers use ExecGate. If you hit one of these, you're not alone.
 
 ### `-> dict` fails at registration
 
@@ -139,7 +139,7 @@ logix.run({"call": "f", "with": {"x": True}}).errors
 # SCHEMA_VALIDATION_FAILED: expected int, got bool
 ```
 
-`True` is not `1` in Logiq.
+`True` is not `1` in ExecGate.
 
 ### `authorize` requires `Allow()` or `Deny(code, message)`
 
@@ -149,7 +149,7 @@ logix.authorize(f, check=lambda args, ctx: True)
 # AUTHORIZATION_FAILED: invalid decision type bool
 
 # RIGHT:
-from logiq import Allow, Deny
+from execgate import Allow, Deny
 
 logix.authorize(f, check=lambda args, ctx: Allow())
 logix.authorize(f, check=lambda args, ctx: Deny("REASON", "why"))
@@ -175,7 +175,7 @@ If the model proposes a plan that fails verification, **do not** rerun `logix.ru
 
 ## The one-sentence summary
 
-> **The developer declares what is possible and what is permitted. The AI chooses what to attempt. Logiq decides what actually happens.**
+> **The developer declares what is possible and what is permitted. The AI chooses what to attempt. ExecGate decides what actually happens.**
 
 Every file in this path has been an instance of that split. Every file in `docs/` expands on it.
 

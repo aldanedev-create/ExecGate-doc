@@ -1,6 +1,6 @@
 # 04 — With an AI
 
-Send the catalog to a model, receive its proposal, run it through Logiq, and return the result.
+Send the catalog to a model, receive its proposal, run it through ExecGate, and return the result.
 
 **Time:** 5 minutes.
 
@@ -13,10 +13,10 @@ Every AI integration, regardless of provider, has the same shape:
 1. **Get the catalog** — `logix.tools.format(...)`.
 2. **Send it to the model** — via the provider's API.
 3. **Receive the proposal** — a JSON plan.
-4. **Parse it** — via an adapter (`logiq_ai`) or hand-written code.
-5. **Run it through Logiq** — `logix.run(plan, context=ctx)`.
+4. **Parse it** — via an adapter (`execgate_ai`) or hand-written code.
+5. **Run it through ExecGate** — `logix.run(plan, context=ctx)`.
 
-Steps 1 and 5 are Logiq's responsibility. Steps 2, 3, and 4 belong to the application. This file shows all five.
+Steps 1 and 5 are ExecGate's responsibility. Steps 2, 3, and 4 belong to the application. This file shows all five.
 
 ---
 
@@ -25,7 +25,7 @@ Steps 1 and 5 are Logiq's responsibility. Steps 2, 3, and 4 belong to the applic
 ```python
 import json
 
-from logiq import Logix
+from execgate import Logix
 
 logix = Logix()
 
@@ -74,7 +74,7 @@ Example output (abbreviated):
 ]
 ```
 
-The catalog is JSON Schema. Any client that can read JSON Schema can consume it. `tools.format("json")` requires no optional package — it's the neutral format behind the claim that Logiq works with any AI that emits JSON.
+The catalog is JSON Schema. Any client that can read JSON Schema can consume it. `tools.format("json")` requires no optional package — it's the neutral format behind the claim that ExecGate works with any AI that emits JSON.
 
 For a specific provider, use `tools.format(provider)`:
 
@@ -87,7 +87,7 @@ openai_catalog = logix.tools.format("openai")
 This requires the optional AI integration:
 
 ```bash
-pip install "logiq[ai]"
+pip install "execgate[ai]"
 ```
 
 `tools.format("json")` is always available; provider-specific formats are conveniences.
@@ -96,16 +96,16 @@ pip install "logiq[ai]"
 
 ## A minimal loop
 
-You need two pieces beyond Logiq:
+You need two pieces beyond ExecGate:
 
 - A way to call the model with the catalog.
 - An adapter to extract the plan from the response.
 
-Both are outside Logiq. Here's the shape:
+Both are outside ExecGate. Here's the shape:
 
 ```python
-from logiq import Logix
-from logiq_ai import get_adapter  # pip install "logiq[ai]"
+from execgate import Logix
+from execgate_ai import get_adapter  # pip install "execgate[ai]"
 
 logix = Logix()
 
@@ -131,7 +131,7 @@ def handle(user_message: str) -> str:
     # Steps 3 and 4: Extract the plan from the model's response.
     plan = adapter.parse_proposal(response)
 
-    # Step 5: Run it through Logiq.
+    # Step 5: Run it through ExecGate.
     result = logix.run(plan, context=ctx)
 
     if result.ok:
@@ -140,7 +140,7 @@ def handle(user_message: str) -> str:
     return f"I couldn't do that: {[e.message for e in result.errors]}"
 ```
 
-The five steps are visible. `openai_client` is your OpenAI client — Logiq does not import it, make the API call, or hold an API key.
+The five steps are visible. `openai_client` is your OpenAI client — ExecGate does not import it, make the API call, or hold an API key.
 
 ---
 
@@ -164,7 +164,7 @@ Output:
 UNKNOWN_CAPABILITY
 ```
 
-The handler was never considered. Logiq rejected the capability name before any handler could run.
+The handler was never considered. ExecGate rejected the capability name before any handler could run.
 
 ### 2. The model proposes incorrect argument types
 
@@ -216,7 +216,7 @@ Output:
 True
 ```
 
-This succeeds. The schema says `amount: float`; `9999.0` is a float. Without grounding, Logiq cannot know that the amount is fabricated.
+This succeeds. The schema says `amount: float`; `9999.0` is a float. Without grounding, ExecGate cannot know that the amount is fabricated.
 
 With grounding:
 
@@ -303,18 +303,18 @@ plan = adapter.parse_proposal(response)
 result = logix.run(plan, context=ctx)
 ```
 
-The boundary doesn't know or care which producer created the plan. That's why `logiq_ai` is a convenience: it translates the catalog for a provider and parses that provider's response. The pipeline works without it.
+The boundary doesn't know or care which producer created the plan. That's why `execgate_ai` is a convenience: it translates the catalog for a provider and parses that provider's response. The pipeline works without it.
 
 ---
 
 ## What you've learned
 
 - The catalog is JSON Schema. `logix.tools.format("json")` works without an optional integration; provider-specific formats are optional.
-- The five steps are: get the catalog, send it to the model, receive the proposal, parse it, and run it through Logiq.
-- Logiq does not call the model. Your application owns that call.
+- The five steps are: get the catalog, send it to the model, receive the proposal, parse it, and run it through ExecGate.
+- ExecGate does not call the model. Your application owns that call.
 - Failures return structured errors. The model can propose a repair, but the repaired plan is verified again.
 - The pipeline works without AI. A hand-written dictionary is treated the same as an AI's proposal at the boundary.
 
-You now have **Level 2 — Logiq with an AI in the loop**. The next file points you toward Level 3 (production) and the rest of the documentation.
+You now have **Level 2 — ExecGate with an AI in the loop**. The next file points you toward Level 3 (production) and the rest of the documentation.
 
 → [05 — What Now?](05-what-now.md)

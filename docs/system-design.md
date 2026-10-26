@@ -11,7 +11,7 @@ the docs and the code disagree, the code is wrong.
                                      │ raw proposal (dict)
                                      ▼
   ┌──────────────────────────────────────────────────────────────────┐
-  │  Logiq (trusted)                                                 │
+  │  ExecGate (trusted)                                                 │
   │                                                                  │
   │  parse ─► grounding ─► verify ─► VerifiedPlan ─► execute         │
   │                          │                          │            │
@@ -212,7 +212,7 @@ matching test, the guarantee is not claimed.
 Two additional structural guarantees:
 #	Guarantee	Enforced at	Test file
 10	VerifiedPlan unforgeable	ir.py (frozen, init=False, private constructor)	tests/core/test_ir_immutability.py
-11	Adapters cannot touch verifier/executor	AST scan of src/logiq_mcp/, src/logiq_ai/, src/logiq_pydantic/	tests/mcp/test_leaf_node_boundary.py
+11	Adapters cannot touch verifier/executor	AST scan of src/execgate_mcp/, src/execgate_ai/, src/execgate_pydantic/	tests/mcp/test_leaf_node_boundary.py
 
 
 4. Why verify and execute are separate
@@ -318,7 +318,7 @@ block legitimate actions. Audit systems that need raw values must
 retrieve them from the handler's own logging.
 
 The application can attach whatever logging/tracing it needs to the
-Trace and to its own handler-level instrumentation. Logiq does not
+Trace and to its own handler-level instrumentation. ExecGate does not
 require a logging framework.
 9. Performance posture
 - Schemas are derived once, at registration. build_capability
@@ -360,8 +360,8 @@ Grounding	semantic/grounding.py
 Repair loop bounds	semantic/repair_loop.py
 Results / trace	results.py, observability.py
 Redaction	_internal/redaction.py
-AI catalog	tools.py, logiq_ai/
-MCP integration	logiq_mcp/
+AI catalog	tools.py, execgate_ai/
+MCP integration	execgate_mcp/
 
 
 11. The structural guarantee

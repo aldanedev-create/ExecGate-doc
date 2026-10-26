@@ -35,9 +35,9 @@ Every example below is real: if it's in this document, it runs.
 12. Limits
 13. Data types: `Result`, `VerificationReport`, `Error`, `VerifiedPlan`, `ToolSpec`
 14. Error codes
-15. Optional — `logiq_pydantic`
-16. Optional — `logiq_ai`
-17. Optional — `logiq_mcp`
+15. Optional — `execgate_pydantic`
+16. Optional — `execgate_ai`
+17. Optional — `execgate_mcp`
 18. Reserved APIs
 19. What is deliberately not in the API
 
@@ -49,7 +49,7 @@ The public surface of the core package is small. Everything else lives
 in a submodule or an optional adapter.
 
 ```python
-from logiq import (
+from execgate import (
     # Engine
     Logix,
 
@@ -82,12 +82,12 @@ These are all **stable 0.1** unless otherwise noted below.
 Optional adapters:
 
 ```python
-from logiq_pydantic import (PydanticType, HandlerMode, set_handler_mode)
-from logiq_ai import (ProviderAdapter, AdapterError, ToolSpec, get_adapter)
-from logiq_mcp import (LogixMCPServer, LogixMCPProxy, LogixMCPProxy)
+from execgate_pydantic import (PydanticType, HandlerMode, set_handler_mode)
+from execgate_ai import (ProviderAdapter, AdapterError, ToolSpec, get_adapter)
+from execgate_mcp import (LogixMCPServer, LogixMCPProxy, LogixMCPProxy)
 ```
 
-The core never imports these. `import logiq` works with none of them
+The core never imports these. `import execgate` works with none of them
 installed (see `tests/pydantic/test_core_without_pydantic.py` and
 `tests/mcp/test_core_without_mcp.py`).
 
@@ -107,7 +107,7 @@ application owns the model call.
 Create an isolated engine.
 
 ```python
-from logiq import Logix
+from execgate import Logix
 
 logix = Logix()
 ```
@@ -277,7 +277,7 @@ provide explicit control.
 because the plan is short.
 
 ```python
-from logiq import Logix
+from execgate import Logix
 
 logix = Logix()
 
@@ -518,7 +518,7 @@ for cap in logix.registry:
 immediately before the handler is invoked.
 
 ```python
-from logiq import Allow, Deny
+from execgate import Allow, Deny
 
 def refund_policy(args, ctx):
     order = db.orders.get(args["order_id"])
@@ -596,20 +596,20 @@ checks — the ones the executor *does* run — go through
 
 ## 9. Approval tokens
 
-`logiq.approval`. **Experimental.**
+`execgate.approval`. **Experimental.**
 
 An `ApprovalToken` is the application's assertion that a specific human
 or system approved a specific action with specific arguments, for a
 specific principal, in a specific context. The AI cannot construct or
 forge one because approval is not part of its output channel.
 
-### `logiq.approval.issue(*, capability, args, context, issuer) -> ApprovalToken`
+### `execgate.approval.issue(*, capability, args, context, issuer) -> ApprovalToken`
 
 Issue a token. Must be called from trusted application code (a UI
 callback, an admin tool, an upstream system).
 
 ```python
-from logiq.approval import issue
+from execgate.approval import issue
 
 token = issue(
     capability="issue_refund",
@@ -650,14 +650,14 @@ context).
 
 ## 10. Context
 
-`logiq.context.ExecutionContext`. **Experimental.**
+`execgate.context.ExecutionContext`. **Experimental.**
 
 Trusted caller identity. Supplied by the application; never by the AI.
 
 ### `ExecutionContext(principal, tenant=None, roles=frozenset(), request_id=None, extra={})`
 
 ```python
-from logiq import ExecutionContext
+from execgate import ExecutionContext
 
 ctx = ExecutionContext(
     principal="alice",
@@ -959,10 +959,10 @@ Two useful distinctions:
    vs. "handler ran and returned the wrong shape." Distinct codes so
    callers can distinguish.
 
-Codes are defined as module constants in `logiq.errors`:
+Codes are defined as module constants in `execgate.errors`:
 
 ```python
-from logiq.errors import (
+from execgate.errors import (
     INVALID_PLAN, UNKNOWN_CAPABILITY, SCHEMA_VALIDATION_FAILED,
     INVALID_REFERENCE, DEPENDENCY_CYCLE, POLICY_REJECTED,
     AUTHORIZATION_FAILED, APPROVAL_REQUIRED, RESOURCE_LIMIT_EXCEEDED,
@@ -974,9 +974,9 @@ from logiq.errors import (
 
 ---
 
-## 15. Optional — `logiq_pydantic`
+## 15. Optional — `execgate_pydantic`
 
-`logiq_pydantic` is an optional adapter. It requires `pydantic>=2,<3`.
+`execgate_pydantic` is an optional adapter. It requires `pydantic>=2,<3`.
 Importing it without Pydantic installed raises a clear `ImportError`.
 
 See `docs/pydantic.md` for the full guide.
@@ -984,7 +984,7 @@ See `docs/pydantic.md` for the full guide.
 ### Installation
 
 ```bash
-pip install "logiq[pydantic]"
+pip install "execgate[pydantic]"
 ```
 
 ### Automatic detection
@@ -1010,48 +1010,48 @@ result = logix.run({
 })
 ```
 
-### `logiq_pydantic.HandlerMode`
+### `execgate_pydantic.HandlerMode`
 
 **Experimental.** Enum with two values: `MODEL` (handler receives model
 instances) and `VALUES` (handler receives plain dicts).
 
-### `logiq_pydantic.set_handler_mode(mode) -> HandlerMode`
+### `execgate_pydantic.set_handler_mode(mode) -> HandlerMode`
 
 **Experimental.** Set the global mode. Accepts `HandlerMode` or its
 string value (`"model"`, `"values"`).
 
-### `logiq_pydantic.get_handler_mode() -> HandlerMode`
+### `execgate_pydantic.get_handler_mode() -> HandlerMode`
 
 **Experimental.** Return the current global mode.
 
-### `logiq_pydantic.install(logix) -> None`
+### `execgate_pydantic.install(logix) -> None`
 
 **Experimental.** Explicit no-op assertion that the adapter is available.
 Raises `ImportError` if not.
 
-### `logiq_pydantic.PydanticType`
+### `execgate_pydantic.PydanticType`
 
 **Experimental.** The `Type` implementation that wraps a Pydantic model.
-Most users never touch this; it appears in `logiq.schemas` output when a
+Most users never touch this; it appears in `execgate.schemas` output when a
 model-typed field is inspected.
 
 ---
 
-## 16. Optional — `logiq_ai`
+## 16. Optional — `execgate_ai`
 
-`logiq_ai` is a leaf-node adapter (ADR-0006) with **zero runtime
+`execgate_ai` is a leaf-node adapter (ADR-0006) with **zero runtime
 dependencies**. It shapes JSON Schema and parses response dicts. It does
 not import any provider SDK.
 
 See `docs/ai-integration.md` for the full guide.
 
-### `logiq_ai.get_adapter(name) -> ProviderAdapter`
+### `execgate_ai.get_adapter(name) -> ProviderAdapter`
 
 **Stable 0.1.** Return an adapter for the given provider name. Falls
 back to `NeutralJSONAdapter` for unknown names.
 
 ```python
-from logiq_ai import get_adapter
+from execgate_ai import get_adapter
 
 adapter = get_adapter("openai")
 adapter = get_adapter("anthropic")
@@ -1061,7 +1061,7 @@ adapter = get_adapter("json")                 # neutral
 adapter = get_adapter("some-new-provider")    # also neutral
 ```
 
-### `logiq_ai.ProviderAdapter`
+### `execgate_ai.ProviderAdapter`
 
 **Stable 0.1.** The protocol every adapter implements.
 
@@ -1074,60 +1074,60 @@ class ProviderAdapter(Protocol):
 
 Two methods. Adapters cannot touch the verifier, executor, or registry.
 
-### `logiq_ai.AdapterError`
+### `execgate_ai.AdapterError`
 
 **Stable 0.1.** Raised by `parse_proposal` when the response cannot be
 translated. Never leaks past the caller; the application translates it
 to `INVALID_PLAN` or drops the proposal.
 
-### `logiq_ai.ToolSpec`
+### `execgate_ai.ToolSpec`
 
-Re-exported from `logiq.tools`. Same class.
+Re-exported from `execgate.tools`. Same class.
 
 ### Provider modules
 
-**Experimental.** Each provider is a module in `logiq_ai.providers`:
+**Experimental.** Each provider is a module in `execgate_ai.providers`:
 
-- `logiq_ai.providers.openai` — `OpenAIAdapter`
-- `logiq_ai.providers.anthropic` — `AnthropicAdapter`
-- `logiq_ai.providers.gemini` — `GeminiAdapter`
-- `logiq_ai.providers.local` — `LocalAdapter`
+- `execgate_ai.providers.openai` — `OpenAIAdapter`
+- `execgate_ai.providers.anthropic` — `AnthropicAdapter`
+- `execgate_ai.providers.gemini` — `GeminiAdapter`
+- `execgate_ai.providers.local` — `LocalAdapter`
 
 You do not normally import them directly; `get_adapter(name)` returns
 the right instance.
 
-### `logiq_ai.prompt_json_mode.build(specs, *, system="", strict=True) -> str`
+### `execgate_ai.prompt_json_mode.build(specs, *, system="", strict=True) -> str`
 
 **Experimental.** Build a system prompt for local models that emit JSON
 but lack native tool calling. See `docs/ai-integration.md §7`.
 
-### `logiq_ai.custom_example.ExampleAdapter`
+### `execgate_ai.custom_example.ExampleAdapter`
 
 **Experimental.** A reference adapter (~30 lines). Not registered; a
 template for writing new adapters.
 
 ---
 
-## 17. Optional — `logiq_mcp`
+## 17. Optional — `execgate_mcp`
 
-`logiq_mcp` requires `fastmcp>=4,<5`. It is a leaf-node adapter (ADR-0007)
-and cannot import `logiq.verifier`, `logiq.executor`, `logiq.ir`, or
-`logiq._internal`.
+`execgate_mcp` requires `fastmcp>=4,<5`. It is a leaf-node adapter (ADR-0007)
+and cannot import `execgate.verifier`, `execgate.executor`, `execgate.ir`, or
+`execgate._internal`.
 
 See `docs/mcp.md` for the full guide.
 
 ### Installation
 
 ```bash
-pip install "logiq[mcp]"
+pip install "execgate[mcp]"
 ```
 
-### `logiq_mcp.LogixMCPServer(logix, *, name="logix", context_factory=None)`
+### `execgate_mcp.LogixMCPServer(logix, *, name="logix", context_factory=None)`
 
 **Experimental.** Expose a Logix engine's capabilities as MCP tools.
 
 ```python
-from logiq_mcp import LogixMCPServer
+from execgate_mcp import LogixMCPServer
 
 server = LogixMCPServer(logix, name="order-service")
 server.run()   # stdio by default
@@ -1157,14 +1157,14 @@ Methods:
 - `context_factory` is zero-argument; per-request principals from MCP
   auth metadata are not yet supported.
 
-### `logiq_mcp.LogixMCPProxy(logix, upstream, *, name="logix-proxy", context_factory=None)`
+### `execgate_mcp.LogixMCPProxy(logix, upstream, *, name="logix-proxy", context_factory=None)`
 
 **Experimental.** Wrap an untrusted upstream MCP server; verify every
-call through Logiq before forwarding.
+call through ExecGate before forwarding.
 
 ```python
 import asyncio
-from logiq_mcp import LogixMCPProxy
+from execgate_mcp import LogixMCPProxy
 
 proxy = LogixMCPProxy(logix, "http://upstream-service/mcp")
 
@@ -1193,7 +1193,7 @@ unsupported keyword (`oneOf`, `$ref`, `minLength`, ...),
 `startup()` raises `ValueError` naming the tool and keyword. The proxy
 does not start. Silently weakening a schema would defeat the proxy.
 
-### `logiq_mcp.adapter`
+### `execgate_mcp.adapter`
 
 **Stable 0.1.** Pure data-shaping functions:
 
@@ -1226,7 +1226,7 @@ dependency order, static decisions. Semantics deferred.
 Would return a human-readable explanation of validation failures.
 Semantics deferred.
 
-### `logix.plan(...)` (in `logiq.plans.format`) — **reserved**
+### `logix.plan(...)` (in `execgate.plans.format`) — **reserved**
 
 Would construct a plan using a supported helper or builder. Semantics
 deferred; hand-written dicts and JSON strings are supported today.
@@ -1266,7 +1266,7 @@ verification boundary.
 | **Python** | `>=3.11` |
 | **Core runtime deps** | none (stdlib only) |
 | **Stable APIs** | `Logix`, `run`, `verify`, `execute`, `tools.describe`, `tools.format`, `Result`, `VerificationReport`, `Error`, `VerifiedPlan`, `ToolSpec`, `ExecutionContext`, `PlanLimits`, error codes |
-| **Experimental APIs** | `authorize`, `require_approval`, `grounding`, `policy`, `limits`, `audit`, `issue` (approval), `PydanticType` and related, `logiq_mcp` classes, `logiq_ai` providers |
+| **Experimental APIs** | `authorize`, `require_approval`, `grounding`, `policy`, `limits`, `audit`, `issue` (approval), `PydanticType` and related, `execgate_mcp` classes, `execgate_ai` providers |
 | **Reserved APIs** | `dry_run`, `explain`, `plans.format.plan` |
 
 Stable means the API name and semantics will not change in a minor or

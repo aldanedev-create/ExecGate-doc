@@ -3,16 +3,16 @@
 ```markdown
 # MCP Integration
 
-Logiq integrates with the Model Context Protocol (MCP) in two directions.
+ExecGate integrates with the Model Context Protocol (MCP) in two directions.
 
-- **Server mode** (`LogixMCPServer`) — expose a Logiq engine's
+- **Server mode** (`LogixMCPServer`) — expose a ExecGate engine's
   capabilities as MCP tools. Any MCP client can discover and call them;
-  every call runs through the full Logiq pipeline.
+  every call runs through the full ExecGate pipeline.
 - **Proxy mode** (`LogixMCPProxy`) — wrap an untrusted upstream MCP
-  server. Every incoming call is verified by Logiq before being
+  server. Every incoming call is verified by ExecGate before being
   forwarded. The upstream never sees a call that failed verification.
 
-Both live in `src/logiq_mcp/`, both are optional, and both follow the
+Both live in `src/execgate_mcp/`, both are optional, and both follow the
 leaf-node rule (ADR-0006, ADR-0007). They translate in and out; they
 never touch the verifier, executor, or IR.
 
@@ -21,7 +21,7 @@ For the MCP-specific rule, see `docs/adr/0007-mcp-leaf-node-boundary.md`.
 
 ---
 
-## 1. What MCP provides, and what Logiq adds
+## 1. What MCP provides, and what ExecGate adds
 
 MCP is a **transport and discovery protocol**. It defines how a client
 enumerates tools and how it calls them. It does not define:
@@ -32,9 +32,9 @@ enumerates tools and how it calls them. It does not define:
 - How to require human approval.
 - How to detect an upstream server doing something unexpected.
 
-Those are the properties Logiq adds. The table makes the split concrete.
+Those are the properties ExecGate adds. The table makes the split concrete.
 
-| Concern | Provided by MCP | Provided by Logiq |
+| Concern | Provided by MCP | Provided by ExecGate |
 |---|---|---|
 | Tool discovery | ✅ `tools/list` | — |
 | Argument schema declaration | ✅ `inputSchema` (advisory) | ✅ schema **enforced** at call time |
@@ -50,23 +50,23 @@ Those are the properties Logiq adds. The table makes the split concrete.
 | Proxy / wrapping | ✅ (MCP proxies) | ✅ (`LogixMCPProxy` with verification) |
 
 The two are complementary. Deploy MCP for the wire protocol; deploy
-Logiq for what happens when a call arrives.
+ExecGate for what happens when a call arrives.
 
 **What neither provides:** scanning tool descriptions for prompt
 injection, sanitizing tool *responses*, or guarding against a malicious
 upstream inventing data. For those, compose with an MCP-security proxy
-like `mcpwall`, `Aran`, `AgentGuard`, or `McpVanguard`. Logiq protects
+like `mcpwall`, `Aran`, `AgentGuard`, or `McpVanguard`. ExecGate protects
 the *request* side; those protect the *content* side.
 
 ---
 
-## 2. Server mode — expose Logiq capabilities as MCP tools
+## 2. Server mode — expose ExecGate capabilities as MCP tools
 
 ### Quickstart
 
 ```python
-from logiq import Logix, Deny
-from logiq_mcp import LogixMCPServer
+from execgate import Logix, Deny
+from execgate_mcp import LogixMCPServer
 
 logix = Logix()
 
@@ -116,7 +116,7 @@ dicts:
 ```
 
 **What is not surfaced:** `effects` (`read` / `write`) and
-`requires_approval` are Logiq-side metadata. The standard MCP
+`requires_approval` are ExecGate-side metadata. The standard MCP
 `tools/list` response contains only `name`, `description`, and
 `inputSchema`. A client calling `issue_refund` does not know in advance
 that approval is required; it will receive `APPROVAL_REQUIRED` at call
@@ -155,7 +155,7 @@ context. A future release will pass the request context to the factory.
   `LogixMCPServer._build_handler` wraps `logix.run` in
   `asyncio.to_thread`, so a slow handler does not freeze the event loop.
 - **Every call is verified.** No shortcut for "this is just one step."
-- **Errors are MCP errors.** Every Logiq failure code
+- **Errors are MCP errors.** Every ExecGate failure code
   (`UNKNOWN_CAPABILITY`, `SCHEMA_VALIDATION_FAILED`, `POLICY_REJECTED`,
   `APPROVAL_REQUIRED`, `HANDLER_FAILED`, `OUTPUT_VALIDATION_FAILED`,
   ...) is surfaced as a `ToolError` with the code in the text. MCP
@@ -245,7 +245,7 @@ which produces a permissive schema. FastMCP 4.1.x may or may not support
 explicit schema registration depending on the minor version.
 
 **Consequence:** the MCP-side schema may be permissive
-(`additionalProperties: true`, no required fields) even though the Logiq
+(`additionalProperties: true`, no required fields) even though the ExecGate
 schema is strict.
 
 **What this means:** a client that *ignores* the MCP schema and sends
@@ -260,7 +260,7 @@ If you need the MCP-side schema to match exactly, either:
   registration (test with `server.describe()` after upgrade to see what
   FastMCP actually advertises).
 - Add a custom `tools/list` middleware in your application (not in
-  `logiq_mcp`) if FastMCP's API allows it.
+  `execgate_mcp`) if FastMCP's API allows it.
 
 Neither is required for security — the verifier is the boundary.
 
@@ -278,7 +278,7 @@ documented API).
 ### What it does
 
 `LogixMCPProxy` sits between an MCP client and an untrusted upstream MCP
-server. Every incoming call is verified by Logiq before being forwarded.
+server. Every incoming call is verified by ExecGate before being forwarded.
 The upstream never sees a call that failed verification.
 
 ### Why this matters
@@ -293,7 +293,7 @@ The MCP ecosystem has a security problem the protocol does not address:
 
 Existing proxies (`mcpwall`, `AgentGuard`, `McpVanguard`, `Aran`) block
 by **signature** — a list of `rm -rf` variants and similar patterns.
-Logiq blocks by **schema and policy** — an invented argument, a
+ExecGate blocks by **schema and policy** — an invented argument, a
 disallowed value, or a denied live-state condition is rejected before
 the upstream sees the call.
 
@@ -306,8 +306,8 @@ appropriate.
 
 ```python
 import asyncio
-from logiq import Logix, Deny
-from logiq_mcp import LogixMCPProxy
+from execgate import Logix, Deny
+from execgate_mcp import LogixMCPProxy
 
 logix = Logix()
 
@@ -345,10 +345,10 @@ asyncio.run(main())
    - `requires_approval=False` by default; the application can mark
      specific wrapped tools with `logix.require_approval(...)` after
      startup.
-3. Registers those capabilities in the Logiq engine, then builds an
+3. Registers those capabilities in the ExecGate engine, then builds an
    outer MCP server exposing them.
 
-Every incoming call now goes through Logiq before reaching the upstream:
+Every incoming call now goes through ExecGate before reaching the upstream:
 
 ```
 Client → Proxy → logix.run(plan) → verification pipeline
@@ -374,7 +374,7 @@ Client → Proxy → logix.run(plan) → verification pipeline
 
 - A malicious upstream returning fabricated data.
 - An upstream `inputSchema` that lies (declares `integer`, receives
-  string; Logiq trusts the declared schema — which is the schema the
+  string; ExecGate trusts the declared schema — which is the schema the
   upstream asked for).
 - Prompt injection in an upstream tool's `description` or response.
 - An upstream tool being *replaced* with a different behavior under the
@@ -385,7 +385,7 @@ For those, compose with a content-scanning proxy.
 
 ### Startup failures
 
-If any upstream tool's `inputSchema` uses a keyword `logiq_mcp` cannot
+If any upstream tool's `inputSchema` uses a keyword `execgate_mcp` cannot
 faithfully convert, `startup()` raises `ValueError` naming the tool and
 the keyword. The proxy does not start. This is deliberate — silently
 weakening a schema at proxy startup would defeat the proxy's purpose.
@@ -437,30 +437,30 @@ upstream.
 
 ## 5. The leaf-node rule (ADR-0006, ADR-0007)
 
-`logiq_mcp` is a leaf node. It sits between MCP clients/servers and the
-Logiq engine. It:
+`execgate_mcp` is a leaf node. It sits between MCP clients/servers and the
+ExecGate engine. It:
 
-- **May** import from `logiq.tools` (ToolSpec), `logiq.results`
-  (Result, Error), `logiq.engine` (Logix), `logiq.capabilities`
-  (Capability), `logiq.context` (ExecutionContext), `logiq.approval`
-  (for approval-related paths), `logiq.schemas` (Type constructors),
-  `logiq.policies` (Allow/Deny).
-- **May not** import from `logiq.verifier`, `logiq.executor`,
-  `logiq.ir`, or `logiq._internal`.
+- **May** import from `execgate.tools` (ToolSpec), `execgate.results`
+  (Result, Error), `execgate.engine` (Logix), `execgate.capabilities`
+  (Capability), `execgate.context` (ExecutionContext), `execgate.approval`
+  (for approval-related paths), `execgate.schemas` (Type constructors),
+  `execgate.policies` (Allow/Deny).
+- **May not** import from `execgate.verifier`, `execgate.executor`,
+  `execgate.ir`, or `execgate._internal`.
 - **May not** call `_construct_verified_plan`, `execute_verified`, or
   `verify_plan` directly.
 
-The only way to run a handler from `logiq_mcp` is `logix.run()` or
+The only way to run a handler from `execgate_mcp` is `logix.run()` or
 `logix.execute(verified_plan)`. Both go through the full pipeline.
 
 `tests/mcp/test_leaf_node_boundary.py` enforces this with an AST scan of
-every source file in `src/logiq_mcp/`, plus a positive assertion that
+every source file in `src/execgate_mcp/`, plus a positive assertion that
 every `logiq.*` import is on the documented allowlist.
 
-If you're adding a new feature to `logiq_mcp` and it needs
+If you're adding a new feature to `execgate_mcp` and it needs
 verifier-internal access, the answer is almost always "put the feature
 in `src/logiq/` and expose it through a public method" — not "let
-`logiq_mcp` reach into the internals." The trust boundary is not a
+`execgate_mcp` reach into the internals." The trust boundary is not a
 convention; it is a structural property.
 
 ---
@@ -469,15 +469,15 @@ convention; it is a structural property.
 
 ### FastMCP version
 
-`logiq_mcp` requires `fastmcp>=4,<5`. FastMCP is built on the official
+`execgate_mcp` requires `fastmcp>=4,<5`. FastMCP is built on the official
 `mcp` Python SDK v2. Pin the minor version you ship against; FastMCP's
 API for explicit schema registration varies between minor versions, and
-`logiq_mcp.server` adapts to what's available at runtime.
+`execgate_mcp.server` adapts to what's available at runtime.
 
 ### Async bridge
 
 `logix.run` is synchronous, but MCP handlers are async.
-`logiq_mcp.server._build_handler` wraps `logix.run` in
+`execgate_mcp.server._build_handler` wraps `logix.run` in
 `asyncio.to_thread` — the sync pipeline runs in a worker thread, and the
 main event loop stays responsive. Without this, a slow handler would
 freeze the whole MCP server.
@@ -490,10 +490,10 @@ to schedule the upstream call on the main loop. This is correct because
 
 ### Logging
 
-MCP wire traffic is verbose. `logiq_mcp` logs at `INFO` for tool
+MCP wire traffic is verbose. `execgate_mcp` logs at `INFO` for tool
 registration and `DEBUG` for registration paths. It does not log
 argument values, handler returns, or plan contents. If you need wire-level
-logging, configure FastMCP's middleware — not `logiq_mcp`.
+logging, configure FastMCP's middleware — not `execgate_mcp`.
 
 ### Testing
 
@@ -512,16 +512,16 @@ than relying on inherited env vars that may or may not be present.
 
 ---
 
-## 7. When not to use `logiq_mcp`
+## 7. When not to use `execgate_mcp`
 
-- **You don't need MCP.** If your application calls Logiq directly from
+- **You don't need MCP.** If your application calls ExecGate directly from
   Python, you don't need this package. `logix.run(plan)` is the same
   pipeline MCP server mode runs.
 - **You only want MCP transport for internal use.** If both ends are
   your own code, you can skip MCP entirely and pass `dict` plans between
   services. MCP adds wire-protocol overhead for benefits you don't need.
 - **You need prompt-injection scanning.** That's a different threat
-  model. Logiq verifies *requests*; content-side scanning (mcpwall,
+  model. ExecGate verifies *requests*; content-side scanning (mcpwall,
   Aran) verifies *descriptions and responses*. Compose them; don't
   expect one to do both.
 - **You need approval over MCP.** Not supported in 0.1.0. See §3.1.
@@ -547,7 +547,7 @@ than relying on inherited env vars that may or may not be present.
       default `"mcp"`. Otherwise invariants see an anonymous caller.
 - [ ] **Compose with a content-scanning proxy** if your upstream could
       be compromised or the model's output could be prompt-injected.
-      Logiq verifies requests; content scanning is a separate layer.
+      ExecGate verifies requests; content scanning is a separate layer.
 - [ ] **Treat the MCP client as trusted, or don't.** A local MCP client
       (Claude Desktop, Cursor) runs on the user's machine; the model is
       the user's. A hosted MCP client is different — verify the trust
@@ -560,11 +560,11 @@ than relying on inherited env vars that may or may not be present.
 
 ## 9. Reference
 
-- `src/logiq_mcp/adapter.py` — data shaping between Logiq and MCP
-- `src/logiq_mcp/server.py` — server mode
-- `src/logiq_mcp/proxy.py` — proxy mode
-- `src/logiq_mcp/upstream.py` — fetch and wrap upstream tools
-- `src/logiq_mcp/py.typed`
+- `src/execgate_mcp/adapter.py` — data shaping between ExecGate and MCP
+- `src/execgate_mcp/server.py` — server mode
+- `src/execgate_mcp/proxy.py` — proxy mode
+- `src/execgate_mcp/upstream.py` — fetch and wrap upstream tools
+- `src/execgate_mcp/py.typed`
 - `docs/adr/0006-adapters-never-touch-trust-boundary.md` — the general adapter rule
 - `docs/adr/0007-mcp-leaf-node-boundary.md` — the specific MCP rule
 - `tests/mcp/` — the full MCP test suite

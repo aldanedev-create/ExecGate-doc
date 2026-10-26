@@ -1,6 +1,6 @@
 ### Plan Format
 
-A plan is untrusted data describing what an AI wants to do. It is JSON, never executable Python. Logiq parses and verifies the plan before executing it.
+A plan is untrusted data describing what an AI wants to do. It is JSON, never executable Python. ExecGate parses and verifies the plan before executing it.
 
 This document defines the plan grammar, parser rules, and the limits of $ref.
 
@@ -87,7 +87,7 @@ At verification time, the verifier:
 4. Checks whether the leaf type is assignable to the destination argument's declared type.
 Assignability is strict: int → float is rejected (no widening), and Literal["a"] → str is rejected (no coercion). The application must declare the types it wants and supply values of those types, or use a capability with a suitable output schema. For example, dict[str, float] accepts floats, not ints.
 
-At execution time, the executor resolves $ref against step_outputs, which contains validated outputs. If the referenced step has not run or the path does not exist in the actual output, Logiq returns INVALID_REFERENCE and halts execution.
+At execution time, the executor resolves $ref against step_outputs, which contains validated outputs. If the referenced step has not run or the path does not exist in the actual output, ExecGate returns INVALID_REFERENCE and halts execution.
 
 The verification-time type check and runtime path check are independent defenses: the first checks what the schema can prove; the second checks the actual data.
 4. Grounding

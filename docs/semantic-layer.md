@@ -18,7 +18,7 @@ This document is the design rationale and usage guide for each. The code lives i
 
 ## 1. The layered model
 
-Logiq has two defensive layers:
+ExecGate has two defensive layers:
 
 | Layer | Eliminates | Determinism |
 |---|---|---|
@@ -29,7 +29,7 @@ The core cannot eliminate semantic failures. A model that says `{"amount": 50.0}
 
 That's what grounding does. Where grounding is insufficient (live state, authorization, approval, deduplication), invariants and the recheck window handle it. Where residual risk remains after all of them, the repair loop and idempotency bound the damage.
 
-See `docs/security.md` §"What Logiq does not protect against" for the honest scope.
+See `docs/security.md` §"What ExecGate does not protect against" for the honest scope.
 
 ---
 
@@ -149,7 +149,7 @@ logix.authorize(issue_refund, check=refund_policy)
 - `Deny(code, message)` — reject with `POLICY_REJECTED`. `code` is application-defined; it appears in `Error.details["code"]`.
 - `RequireApproval(reason)` — route to the approval flow. If no token is supplied, the result is `APPROVAL_REQUIRED`.
 
-Any other return value (a `bool`, a string, `None`) is treated as an error: `AUTHORIZATION_FAILED: invalid decision type <type>`. An invariant that returns the wrong type is a bug in the invariant, and Logiq fails closed.
+Any other return value (a `bool`, a string, `None`) is treated as an error: `AUTHORIZATION_FAILED: invalid decision type <type>`. An invariant that returns the wrong type is a bug in the invariant, and ExecGate fails closed.
 
 ### What they cost
 
@@ -306,7 +306,7 @@ The `issue(...)` function is not on the AI's output channel. The AI never sees a
 ### Testing approval
 
 ```python
-from logiq.approval import issue
+from execgate.approval import issue
 
 ctx = logix.context(principal="alice")
 args = {"order_id": 502, "amount": 50.0}
@@ -430,7 +430,7 @@ A model that reads `POLICY_REJECTED` as a routing hint is exactly the failure mo
 ### Usage
 
 ```python
-from logiq.semantic import RepairLoop, RepairRefused
+from execgate.semantic import RepairLoop, RepairRefused
 
 loop = RepairLoop(max_attempts=3, registry=logix.registry)
 

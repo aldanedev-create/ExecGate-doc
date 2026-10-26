@@ -19,7 +19,7 @@ Build a refund application with grounding, live-state authorization, human appro
 
 ## What you're building
 
-A support agent that can refund orders. The AI proposes; Logiq verifies; your handlers run.
+A support agent that can refund orders. The AI proposes; ExecGate verifies; your handlers run.
 
 The critical properties:
 
@@ -52,7 +52,7 @@ Real refunds interact with a real database. We'll use a dictionary for this less
 Add this to `refund_app.py`:
 
 ```python
-from logiq import Logix
+from execgate import Logix
 
 logix = Logix()
 
@@ -155,7 +155,7 @@ We'll enforce two invariants:
 Add the imports and policy:
 
 ```python
-from logiq import Allow, Deny
+from execgate import Allow, Deny
 
 
 def refund_policy(args, ctx):
@@ -308,7 +308,7 @@ The application issues the token after a human approves the action.
 Add this import near the top of `refund_app.py`:
 
 ```python
-from logiq.approval import issue
+from execgate.approval import issue
 ```
 
 Then add:
@@ -517,7 +517,7 @@ Create `test_refund_app.py`:
 ```python
 import pytest
 
-from logiq.approval import issue
+from execgate.approval import issue
 
 from refund_app import (
     logix,
@@ -721,8 +721,8 @@ The following is the complete `refund_app.py` file, ready to copy. It combines t
 ```python
 """Lesson 01: Refund workflow with grounding, invariants, approval, and audit."""
 
-from logiq import Logix, Allow, Deny
-from logiq.approval import issue
+from execgate import Logix, Allow, Deny
+from execgate.approval import issue
 
 logix = Logix()
 
@@ -945,7 +945,7 @@ Try adding `cancel_order(order_id)`. Register it and add an invariant that allow
 
 `logix.tools.format("json")` provides the capability catalog in this example. Write a small script that sends the catalog to your model of choice and validates the returned proposal before execution.
 
-The plan shape remains the same. The AI proposes; Logiq verifies.
+The plan shape remains the same. The AI proposes; ExecGate verifies.
 
 ## Where to read more
 

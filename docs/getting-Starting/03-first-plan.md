@@ -8,7 +8,7 @@ Write a multi-step plan with `$ref` references, watch it succeed, then watch it 
 
 ## Two shapes of a plan
 
-Logiq accepts two plan shapes.
+ExecGate accepts two plan shapes.
 
 **Single-call** (what you used in file 02):
 
@@ -62,7 +62,7 @@ The difference is `steps`. Each step has an `id`, a `call` (capability name), an
 Create `refund.py`:
 
 ```python
-from logiq import Logix
+from execgate import Logix
 
 logix = Logix()
 

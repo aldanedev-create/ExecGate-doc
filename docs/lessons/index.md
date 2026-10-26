@@ -8,7 +8,7 @@ run.
 These are not reference docs. For "what does `logix.authorize` do?", see
 `docs/api-reference.md`. For "how do I deploy this?", see
 `docs/production-guide.md`. These are for "I want to build X, and I'll
-learn Logiq by doing it."
+learn ExecGate by doing it."
 
 ---
 
@@ -16,7 +16,7 @@ learn Logiq by doing it."
 
 Every lesson:
 
-- **Starts from zero.** Fresh file. `from logiq import Logix` at the top.
+- **Starts from zero.** Fresh file. `from execgate import Logix` at the top.
 - **Builds in visible steps.** Each step adds one concept. You see the
   code grow.
 - **Shows the output.** After each step, the exact expected output is
@@ -40,7 +40,7 @@ bug. File it.
 | 03 | [Custom Adapter](03-custom-adapter.md) | A provider adapter for a fictional AI SDK, passing the conformance kit | `ProviderAdapter`, `AdapterContractMixin`, `tools.format(provider)` | ~30 min |
 | 04 | [MCP Proxy](04-mcp-proxy.md) | A verified proxy in front of an untrusted MCP server | `LogixMCPProxy`, `startup()`, `FakeMCPClient`, `authorize` on wrapped tools | ~35 min |
 | 05 | [Pydantic Models](05-pydantic-models.md) | A capabilities file built from existing Pydantic domain models | `PydanticType`, `HandlerMode`, `$ref` into model outputs | ~30 min |
-| 06 | [AI Integration](06-ai-integration.md) | A working agent loop where a real model (via OpenRouter) proposes plans, Logiq verifies, errors feed back for bounded repair | The five-step loop, multi-turn tool calls, `RepairLoop`, the grounding trap | ~45 min |
+| 06 | [AI Integration](06-ai-integration.md) | A working agent loop where a real model (via OpenRouter) proposes plans, ExecGate verifies, errors feed back for bounded repair | The five-step loop, multi-turn tool calls, `RepairLoop`, the grounding trap | ~45 min |
 
 Read them in the order that fits your situation. Lesson 01 is the
 recommended starting point — it exercises the whole semantic layer in
@@ -94,7 +94,7 @@ model.
 Before any lesson:
 
 - Python 3.11+ installed.
-- `pip install logiq` completed.
+- `pip install execgate` completed.
 - The `docs/getting-started/` path read (about 15 minutes).
 
 The lessons assume you know:
@@ -127,7 +127,7 @@ mkdir 01-refund && cd 01-refund
 
 You'll copy code into files as you go. Nothing is installed beyond
 `logiq` (plus the extras a specific lesson names — Pydantic for Lesson
-05, FastMCP for Lesson 04, `openai` and `logiq_ai` for Lesson 06).
+05, FastMCP for Lesson 04, `openai` and `execgate_ai` for Lesson 06).
 
 ---
 
@@ -156,7 +156,7 @@ python agent.py
 ```
 
 That code sends real requests, gets real plans, runs them through real
-Logiq. If you want to see the boundary working with a fixture model, use
+ExecGate. If you want to see the boundary working with a fixture model, use
 Lesson 01's hand-written plans (which are exactly the same shape).
 
 ---
@@ -174,7 +174,7 @@ Same as `docs/getting-started/`:
 One more, specific to the AI lessons:
 
 - **`adapter`** (lowercase) is the `ProviderAdapter` instance from
-  `logiq_ai.get_adapter(...)`. It shapes the catalog for the model and
+  `execgate_ai.get_adapter(...)`. It shapes the catalog for the model and
   parses the model's response back into a neutral plan.
 
 ---
@@ -196,7 +196,7 @@ pipeline: catalog → model proposal → parse → verify → recheck → execut
 aspect of it.
 
 If you've worked through all six, you've exercised every major feature
-of Logiq. The reference docs will make a lot more sense now.
+of ExecGate. The reference docs will make a lot more sense now.
 ```
 
 ---

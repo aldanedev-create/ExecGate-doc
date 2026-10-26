@@ -1,9 +1,9 @@
 Architecture
-Logiq verifies a plan before allowing it to run. This document explains the main components and why they exist.
+ExecGate verifies a plan before allowing it to run. This document explains the main components and why they exist.
 
 For the full execution pipeline, see [`system-design.md`](system-design.md).
 Core guarantee
-A plan that fails Logiq's required verification checks does not reach normal handler execution.
+A plan that fails ExecGate's required verification checks does not reach normal handler execution.
 
 The core is designed to make this guarantee testable.
 Component map
@@ -16,7 +16,7 @@ flowchart TD
     E --> F["Execution-time rechecks"]
     F --> G["Trusted capability handlers"]
 
-    H["Optional adapters<br/>logiq_pydantic · logiq_ai · logiq_mcp"] -. "translate data in or out" .-> B
+    H["Optional adapters<br/>execgate_pydantic · execgate_ai · execgate_mcp"] -. "translate data in or out" .-> B
 ```
 The core (src/logiq/) owns the trust boundary. Optional adapters translate data in or out; they must not call the verifier or executor or construct a VerifiedPlan (ADR-0006 and ADR-0007).
 Core components
@@ -31,7 +31,7 @@ A Capability describes an action, its handler, input and output schemas, effects
 
 Capabilities are created by build_capability, which inspects annotations and infers schemas. Unsupported annotations fail at registration (ADR-0003).
 
-Registry is the source of truth for callable capabilities. Unknown names raise KeyError; Logiq does not fall back to Python attribute lookup. A stable snapshot hash lets the executor detect registry changes after verification.
+Registry is the source of truth for callable capabilities. Unknown names raise KeyError; ExecGate does not fall back to Python attribute lookup. A stable snapshot hash lets the executor detect registry changes after verification.
 annotation_inspect.py — function signatures
 Reads a function's signature, docstring, and resolved annotations. It rejects unsupported function shapes, including non-callables, classes, async functions, variadic parameters, and unbound methods.
 schemas/ — types and validation
@@ -41,7 +41,7 @@ infer.py	Converts Python annotations into input and output schemas. Unsupported 
 constraints.py	Defines Annotated constraints such as Gt, Ge, Lt, Le, MinLength, MaxLength, and Pattern.
 validate.py	Validates capability inputs and outputs, including constrained values.
 json_schema.py	Converts the same schema types to JSON Schema, keeping runtime validation and AI-facing schemas consistent.
-unsupported.py	Describes unsupported annotations so Logiq can reject them instead of weakening validation.
+unsupported.py	Describes unsupported annotations so ExecGate can reject them instead of weakening validation.
 
 
 The schema Type protocol provides validate(value, path), to_json_schema(), and walk(segment). walk supports checking references to fields in nested schemas.
@@ -91,18 +91,18 @@ semantic/ — checks involving meaning or live state
 This package contains grounding, invariants, execution-time rechecks, repair loops, and idempotency. See [`semantic-layer.md`](semantic-layer.md).
 _internal/ — immutability and redaction
 - immutability.py provides freezing and canonical JSON/hash helpers used for tamper detection.
-- redaction.py provides redact for applications that include sensitive values in their own error details. Logiq's built-in traces and errors avoid raw values by construction.
+- redaction.py provides redact for applications that include sensitive values in their own error details. ExecGate's built-in traces and errors avoid raw values by construction.
 Design principles
 1. Verify before calling handlers
 @logix.capability returns the original function. logix.run(plan) verifies the plan before executing it, so invalid plans do not cause handler side effects.
 2. One execution path
 Single-call and multi-step plans use the same parser, verifier, and executor. Single-call plans use a synthetic __single__ step ID. There is no shortcut around verification.
 3. Reject unsupported input
-Logiq rejects input it cannot safely understand instead of silently weakening validation. Examples include unsupported Python annotations, unsupported MCP JSON Schema keywords, and unknown top-level plan fields. See ADR-0003.
+ExecGate rejects input it cannot safely understand instead of silently weakening validation. Examples include unsupported Python annotations, unsupported MCP JSON Schema keywords, and unknown top-level plan fields. See ADR-0003.
 4. Verification is not authorization
 A VerifiedPlan records that a plan passed structural and static checks at verification time. It does not guarantee that the caller is still authorized or that live conditions and approvals remain valid. The executor checks those conditions again immediately before execution (ADR-0004).
 5. Adapters stay outside the trust boundary
-logiq_pydantic, logiq_ai, and logiq_mcp translate data in or out. They must not access the verifier, executor, verified-plan representation, or internal security helpers (ADR-0006 and ADR-0007).
+execgate_pydantic, execgate_ai, and execgate_mcp translate data in or out. They must not access the verifier, executor, verified-plan representation, or internal security helpers (ADR-0006 and ADR-0007).
 6. Provider-neutral core
 The core can produce a neutral JSON Schema catalog with tools.format("json"). Optional provider-specific formats translate that catalog for particular AI providers. The trust boundary does not depend on which model produced a plan. See [`ai-integration.md`](ai-integration.md).
 7. No third-party runtime dependencies in the core
@@ -112,12 +112,12 @@ Result, VerificationReport, Error, and VerifiedPlan enforce their invariants whe
 What stays outside the core?
 Concern	Where it belongs	Why
 Model calls	Application	The application owns the provider and decides when to call it.
-HTTP servers	Application or logiq_mcp	The core is transport-independent.
+HTTP servers	Application or execgate_mcp	The core is transport-independent.
 Persistent storage	Application or an IdempotencyStore implementation	The default store is in memory; applications choose durable storage.
-Prompt engineering	Application or logiq_ai.prompt_json_mode	Prompts guide a model; they do not replace verification.
+Prompt engineering	Application or execgate_ai.prompt_json_mode	Prompts guide a model; they do not replace verification.
 Retry policy	Application or semantic.repair_loop	Applications choose whether and how to retry.
-Business rules	Application	Logiq runs the rules the application declares.
-Audit storage	Application, using logix.audit(hook)	Logiq provides audit metadata; the application chooses where to store it.
+Business rules	Application	ExecGate runs the rules the application declares.
+Audit storage	Application, using logix.audit(hook)	ExecGate provides audit metadata; the application chooses where to store it.
 
 
 Related documentation

@@ -1,6 +1,6 @@
 # Lesson 03 — Custom Adapter
 
-Write a provider adapter for a fictional AI SDK, register it, and pass the conformance tests. By the end, you'll have a working adapter that plugs into `logix.tools.format("hub")` and produces plans that run through Logiq.
+Write a provider adapter for a fictional AI SDK, register it, and pass the conformance tests. By the end, you'll have a working adapter that plugs into `logix.tools.format("hub")` and produces plans that run through ExecGate.
 
 **Time:** 30 minutes  
 **You will build:** Approximately 50 lines of adapter code and 40 lines of conformance tests  
@@ -41,14 +41,14 @@ A fictional AI provider called **Hub**. It has its own API shape.
 }
 ```
 
-Your adapter translates between this provider-specific shape and Logiq's neutral shape.
+Your adapter translates between this provider-specific shape and ExecGate's neutral shape.
 
 The critical properties are:
 
 - `format_tools(specs)` produces a shape the fictional provider's SDK would accept.
 - `parse_proposal(response)` produces a neutral plan dictionary.
 - The adapter passes the conformance tests that every adapter must satisfy.
-- The adapter is a **leaf node**: it does not import from `logiq.verifier`, `logiq.executor`, or `logiq.ir`.
+- The adapter is a **leaf node**: it does not import from `execgate.verifier`, `execgate.executor`, or `execgate.ir`.
 
 ## Setup
 
@@ -60,20 +60,20 @@ cd logiq-lessons/03-custom-adapter
 touch hub_adapter.py test_hub_adapter.py
 ```
 
-You'll also need `logiq_ai` installed:
+You'll also need `execgate_ai` installed:
 
 ```bash
-pip install "logiq[ai]"
+pip install "execgate[ai]"
 ```
 
-The `logiq_ai` package provides the `ProviderAdapter` protocol, the conformance kit's base class, and the mechanism for registering adapters. Your adapter plugs into that ecosystem.
+The `execgate_ai` package provides the `ProviderAdapter` protocol, the conformance kit's base class, and the mechanism for registering adapters. Your adapter plugs into that ecosystem.
 
 ## Step 1 — Understand the protocol
 
 Open `docs/ai-integration.md`, section 4, or inspect the protocol directly:
 
 ```python
-from logiq_ai import ProviderAdapter
+from execgate_ai import ProviderAdapter
 
 help(ProviderAdapter)
 ```
@@ -107,7 +107,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from logiq_ai.base import AdapterError, ToolSpec
+from execgate_ai.base import AdapterError, ToolSpec
 
 
 class HubAdapter:
@@ -164,7 +164,7 @@ Create a small catalog:
 
 ```python
 from hub_adapter import HubAdapter
-from logiq.tools import ToolSpec
+from execgate.tools import ToolSpec
 
 adapter = HubAdapter()
 
@@ -232,9 +232,9 @@ Expected output:
 
 This is a neutral plan dictionary that you can pass to `logix.run()`.
 
-## Step 3 — Register it with `logiq_ai`
+## Step 3 — Register it with `execgate_ai`
 
-`logiq_ai` has a registry mapping provider names to adapters. The lesson assumes built-in providers such as `openai`, `anthropic`, `gemini`, and `local` are registered by default.
+`execgate_ai` has a registry mapping provider names to adapters. The lesson assumes built-in providers such as `openai`, `anthropic`, `gemini`, and `local` are registered by default.
 
 To make `logix.tools.format("hub")` resolve your adapter, it must be registered.
 
@@ -243,7 +243,7 @@ To make `logix.tools.format("hub")` resolve your adapter, it must be registered.
 One possible approach is to add an entry to the provider registry:
 
 ```python
-from logiq_ai import registry
+from execgate_ai import registry
 
 registry._PROVIDERS["hub"] = (
     "hub_adapter",
@@ -255,7 +255,7 @@ This uses the private `_PROVIDERS` registry and is not the preferred approach fo
 
 ### Option B — Use the adapter directly
 
-If you don't want to register your adapter with `logiq_ai`, for example because it is specific to your application, use the adapter instance directly:
+If you don't want to register your adapter with `execgate_ai`, for example because it is specific to your application, use the adapter instance directly:
 
 ```python
 adapter = HubAdapter()
@@ -268,7 +268,7 @@ plan = adapter.parse_proposal(hub_response)
 result = logix.run(plan)
 ```
 
-This is the recommended approach for the lesson. It demonstrates how the adapter works with the pipeline without requiring changes to `logiq_ai`'s registry.
+This is the recommended approach for the lesson. It demonstrates how the adapter works with the pipeline without requiring changes to `execgate_ai`'s registry.
 
 For the remaining steps, we'll use Option B.
 
@@ -278,7 +278,7 @@ Add the following example to the bottom of `hub_adapter.py`:
 
 ```python
 if __name__ == "__main__":
-    from logiq import Logix
+    from execgate import Logix
 
     logix = Logix()
 
@@ -306,7 +306,7 @@ if __name__ == "__main__":
     plan = adapter.parse_proposal(hub_response)
     print("Plan:", plan)
 
-    # 4. Run the plan through Logiq.
+    # 4. Run the plan through ExecGate.
     result = logix.run(plan)
     print("Result:", result.value)
 ```
@@ -325,11 +325,11 @@ Plan: {'call': 'add', 'with': {'a': 2, 'b': 3}}
 Result: 5
 ```
 
-The adapter translates Hub's response into Logiq's neutral plan format. Logiq then processes the plan through its normal pipeline.
+The adapter translates Hub's response into ExecGate's neutral plan format. ExecGate then processes the plan through its normal pipeline.
 
 ## Step 5 — Write the conformance tests
 
-The conformance kit is located at `tests/adapters/contract.py`. This lesson uses a standalone test class with representative contract checks, rather than importing `AdapterContractMixin` from the Logiq repository's test directory.
+The conformance kit is located at `tests/adapters/contract.py`. This lesson uses a standalone test class with representative contract checks, rather than importing `AdapterContractMixin` from the ExecGate repository's test directory.
 
 Add the following to `test_hub_adapter.py`:
 
@@ -363,7 +363,7 @@ class TestHubAdapter:
         assert adapter.format_tools([]) == {"capabilities": []}
 
     def test_format_tools_includes_every_capability(self):
-        from logiq.tools import ToolSpec
+        from execgate.tools import ToolSpec
 
         adapter = self.make_adapter()
         specs = [
@@ -404,7 +404,7 @@ class TestHubAdapter:
     def test_parse_rejects_non_dict(self):
         import pytest
 
-        from logiq_ai.base import AdapterError
+        from execgate_ai.base import AdapterError
 
         adapter = self.make_adapter()
 
@@ -414,7 +414,7 @@ class TestHubAdapter:
     def test_parse_rejects_no_action(self):
         import pytest
 
-        from logiq_ai.base import AdapterError
+        from execgate_ai.base import AdapterError
 
         adapter = self.make_adapter()
 
@@ -424,7 +424,7 @@ class TestHubAdapter:
     def test_parse_rejects_bad_call_name(self):
         import pytest
 
-        from logiq_ai.base import AdapterError
+        from execgate_ai.base import AdapterError
 
         adapter = self.make_adapter()
 
@@ -441,7 +441,7 @@ class TestHubAdapter:
     def test_parse_rejects_bad_payload(self):
         import pytest
 
-        from logiq_ai.base import AdapterError
+        from execgate_ai.base import AdapterError
 
         adapter = self.make_adapter()
 
@@ -474,7 +474,7 @@ class TestHubAdapter:
             )
 
     def test_parse_cannot_smuggle_verified(self):
-        from logiq.plans import parse_plan
+        from execgate.plans import parse_plan
 
         adapter = self.make_adapter()
 
@@ -501,7 +501,7 @@ Run the tests:
 pytest test_hub_adapter.py -v
 ```
 
-The expected result is **10 passing tests**, provided the imports and APIs match the installed Logiq and `logiq_ai` versions.
+The expected result is **10 passing tests**, provided the imports and APIs match the installed ExecGate and `execgate_ai` versions.
 
 ### What each test proves
 
@@ -514,7 +514,7 @@ The expected result is **10 passing tests**, provided the imports and APIs match
 - `test_adapter_has_no_trust_boundary_attributes` — the adapter does not expose the listed trust-boundary attributes.
 - `test_parse_cannot_smuggle_verified` — the adapter does not forward an arbitrary `verified` field, and the example checks that `parse_plan()` rejects a forged field.
 
-These are representative contract checks. **They do not, by themselves, prove that the adapter passes the repository's actual conformance kit.** To establish that, run the real `AdapterContractMixin` tests against `HubAdapter` in the Logiq repository.
+These are representative contract checks. **They do not, by themselves, prove that the adapter passes the repository's actual conformance kit.** To establish that, run the real `AdapterContractMixin` tests against `HubAdapter` in the ExecGate repository.
 
 ## Step 6 — The complete files
 
@@ -553,11 +553,11 @@ plan = adapter.parse_proposal(hub_response)
 result = logix.run(plan)
 ```
 
-The adapter handles translation. Logiq remains responsible for processing the resulting plan through its own pipeline.
+The adapter handles translation. ExecGate remains responsible for processing the resulting plan through its own pipeline.
 
 ## What to try next
 
-1. **Register the adapter with `logiq_ai`.** If the package supports a public registration API, prefer that API. The private `_PROVIDERS` example above is implementation-dependent. If you add the entry to `logiq_ai/registry.py`, verify that `logix.tools.format("hub")` resolves it.
+1. **Register the adapter with `execgate_ai`.** If the package supports a public registration API, prefer that API. The private `_PROVIDERS` example above is implementation-dependent. If you add the entry to `execgate_ai/registry.py`, verify that `logix.tools.format("hub")` resolves it.
 
 2. **Handle multi-tool responses.** Hub currently returns one action per response. If the SDK returns a list of actions, decide whether to support multiple actions or reject them explicitly. Add tests for your chosen behavior.
 

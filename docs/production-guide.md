@@ -1,30 +1,30 @@
 # Production Guide
 
-Deployment considerations, observability, limits, and the honest boundary of what Logiq's guarantees cover. Read this before running Logiq against real users.
+Deployment considerations, observability, limits, and the honest boundary of what ExecGate's guarantees cover. Read this before running ExecGate against real users.
 
 ---
 
 ## 1. What You're Deploying
 
-Logiq is a **verification and execution boundary** between untrusted plans and trusted handlers. In production, that means:
+ExecGate is a **verification and execution boundary** between untrusted plans and trusted handlers. In production, that means:
 
 - **The trust boundary is a real boundary.** A plan that fails verification does not reach a handler. The core guarantee is structural, not conventional.
 - **The semantic layer is engineered minimization, not proof.** Grounding stops model-typed sensitive values. Invariants check live state. Approvals gate sensitive actions. None of these prove the model's intent is correct.
-- **The handler is the application's responsibility.** Logiq does not prove the handler is correct, that external services behave, or that business rules hold.
+- **The handler is the application's responsibility.** ExecGate does not prove the handler is correct, that external services behave, or that business rules hold.
 
-Before production, read `docs/security.md`, particularly the section titled **"What Logiq does not protect against"**, and make sure your application addresses each gap.
+Before production, read `docs/security.md`, particularly the section titled **"What ExecGate does not protect against"**, and make sure your application addresses each gap.
 
 ---
 
 ## 2. Deployment Topology
 
-Logiq runs in-process. There is no separate service, no network hop, and no background daemon.
+ExecGate runs in-process. There is no separate service, no network hop, and no background daemon.
 
 ### Single Process (Default)
 
 ```python
 # app.py
-from logiq import Logix
+from execgate import Logix
 
 logix = Logix()
 
@@ -62,7 +62,7 @@ Each engine has isolated state. A policy attached to one engine does not affect 
 
 ### Co-Located With the AI
 
-Logiq runs in the same process as the AI client. The `run()` call typically sits between receiving the model's response and returning the result to the model.
+ExecGate runs in the same process as the AI client. The `run()` call typically sits between receiving the model's response and returning the result to the model.
 
 The engine holds no provider handle; the application owns the AI call.
 
@@ -82,7 +82,7 @@ Defaults are defined in `PlanLimits`:
 Override them per engine:
 
 ```python
-from logiq.plans import PlanLimits
+from execgate.plans import PlanLimits
 
 logix = Logix(
     limits=PlanLimits(
@@ -117,10 +117,10 @@ Configuration is synchronous and does not block. Configure the engine at import 
 
 ### HandlerMode (Pydantic)
 
-If `logiq_pydantic` is installed, the handler mode is module-global:
+If `execgate_pydantic` is installed, the handler mode is module-global:
 
 ```python
-from logiq_pydantic import HandlerMode, set_handler_mode
+from execgate_pydantic import HandlerMode, set_handler_mode
 
 set_handler_mode(HandlerMode.VALUES)  # or MODEL (default)
 ```
@@ -217,9 +217,9 @@ If you need to log arguments for debugging in a staging environment, do so expli
 
 ### Required
 
-- [ ] **Do not expose `logix.run()` directly to the internet.** The model's proposal must come from the application's AI call, not from an untrusted HTTP request. An endpoint that runs arbitrary submitted plans bypasses the purpose of Logiq.
+- [ ] **Do not expose `logix.run()` directly to the internet.** The model's proposal must come from the application's AI call, not from an untrusted HTTP request. An endpoint that runs arbitrary submitted plans bypasses the purpose of ExecGate.
 - [ ] **Treat handler code as trusted code.** Every function decorated with `@logix.capability` should be written and reviewed like any other handler in your application.
-- [ ] **Use safe subprocess practices.** Use `shell=False`, list-based arguments, and timeouts for any handler that shells out. Logiq does not sanitize string arguments.
+- [ ] **Use safe subprocess practices.** Use `shell=False`, list-based arguments, and timeouts for any handler that shells out. ExecGate does not sanitize string arguments.
 - [ ] **Keep credentials out of argument values.** `ExecutionContext` carries identity; capability arguments should not contain API keys, passwords, or session tokens.
 - [ ] **Make invariants read live state.** A cached authorization check is not a live authorization check.
 - [ ] **Issue approval tokens only from trusted code.** Never issue them from a request body, model output, or URL parameter.
@@ -255,7 +255,7 @@ For payment, order submission, or any side effect where double execution is unac
 The following is an illustrative PostgreSQL-backed implementation:
 
 ```python
-from logiq.semantic import IdempotencyResult, IdempotencyStatus
+from execgate.semantic import IdempotencyResult, IdempotencyStatus
 
 
 class PostgresIdempotencyStore:
@@ -339,7 +339,7 @@ logix = Logix(
 
 **Exactly-once execution still requires cooperation from the external service.**
 
-Logiq can deduplicate handler invocations within the scope of its store. It cannot guarantee that a payment processor charged once if the network dropped the response and Logiq's store shows `committed`. That is a distributed-systems problem, not a Logiq-specific guarantee.
+ExecGate can deduplicate handler invocations within the scope of its store. It cannot guarantee that a payment processor charged once if the network dropped the response and ExecGate's store shows `committed`. That is a distributed-systems problem, not a ExecGate-specific guarantee.
 
 The specification's page 14 caveat applies: do not claim exactly-once behavior without the required infrastructure.
 
@@ -349,7 +349,7 @@ The specification's page 14 caveat applies: do not claim exactly-once behavior w
 
 ### Throughput
 
-A single Logiq engine on a single core handles thousands of `logix.run()` calls per second for simple plans. Verification is measured in microseconds; handler execution dominates.
+A single ExecGate engine on a single core handles thousands of `logix.run()` calls per second for simple plans. Verification is measured in microseconds; handler execution dominates.
 
 If verification is your bottleneck, you have an unusual workload, such as millions of no-op plans. Add more workers or profile the specific cost.
 
@@ -407,11 +407,11 @@ Application code that switches on `Error.code` is intended to remain safe across
 
 ### Adapter Versioning
 
-Adapters (`logiq_pydantic`, `logiq_ai`, and `logiq_mcp`) are versioned together with the core in version `0.1.0`. Future releases may decouple them; for now, the version numbers match.
+Adapters (`execgate_pydantic`, `execgate_ai`, and `execgate_mcp`) are versioned together with the core in version `0.1.0`. Future releases may decouple them; for now, the version numbers match.
 
 ### `VerifiedPlan` Compatibility
 
-A `VerifiedPlan` produced by Logiq `0.1.x` may not be accepted by Logiq `0.1.y` if the `verification_hash` algorithm changes.
+A `VerifiedPlan` produced by ExecGate `0.1.x` may not be accepted by ExecGate `0.1.y` if the `verification_hash` algorithm changes.
 
 In practice, this should not be a concern because plans are short-lived: verification and execution normally occur in the same request. If you persist `VerifiedPlan` objects for later execution, re-verify them after upgrades.
 
@@ -470,7 +470,7 @@ Double execution can happen across processes when using the default per-process 
 
 ### Symptom: The Model Does Not Respond Well to the Catalog
 
-This is not necessarily a Logiq bug. The model sees JSON Schema; if it produces plans that the schema rejects, the descriptions may be too terse or the schema too strict.
+This is not necessarily a ExecGate bug. The model sees JSON Schema; if it produces plans that the schema rejects, the descriptions may be too terse or the schema too strict.
 
 Options:
 
@@ -480,7 +480,7 @@ Options:
 - Use the local JSON-mode prompt builder for more detailed instructions.
 - Compare behavior across models. Some models handle the same catalog better than others.
 
-This may be a model's tool-calling limitation rather than a Logiq issue.
+This may be a model's tool-calling limitation rather than a ExecGate issue.
 
 ---
 
@@ -522,20 +522,20 @@ approval_denials.rate    (counter)
 
 ---
 
-## 11. What Logiq Is Not
+## 11. What ExecGate Is Not
 
-Logiq is not:
+ExecGate is not:
 
 - **A workflow engine:** No orchestration, scheduling, or durable workflow state.
 - **A task queue:** No persistence or retry daemon.
-- **A database:** The idempotency store can be backed by one, but Logiq does not provide one.
+- **A database:** The idempotency store can be backed by one, but ExecGate does not provide one.
 - **A distributed system:** The core is single-process.
 - **An AI provider:** No model calls or provider SDK.
 - **A security proxy:** It enforces what the application declares; it does not infer authorization or scan for prompt injection.
 - **A business rule engine:** Invariants are code the application writes; business logic remains the application's responsibility.
 - **A guarantee that any specific action is safe:** See [Section 1](#1-what-youre-deploying).
 
-The honest scope: Logiq is a verification and execution boundary. It makes a plan's transition from "the model said this" to "the handler ran with these arguments" auditable, testable, and structurally impossible to bypass.
+The honest scope: ExecGate is a verification and execution boundary. It makes a plan's transition from "the model said this" to "the handler ran with these arguments" auditable, testable, and structurally impossible to bypass.
 
 Everything else — the model, the handlers, the business rules, and the external services — remains the application's responsibility.
 

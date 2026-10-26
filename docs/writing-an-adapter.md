@@ -1,6 +1,6 @@
 # Writing an Adapter
 
-A Logiq provider adapter is approximately 30 lines of pure translation. This walkthrough builds one end-to-end and shows how to test it against the conformance kit.
+A ExecGate provider adapter is approximately 30 lines of pure translation. This walkthrough builds one end-to-end and shows how to test it against the conformance kit.
 
 For the design rule behind adapters, see ADR-0006. For the full `ProviderAdapter` protocol, see `docs/ai-integration.md` §4.
 
@@ -56,7 +56,7 @@ And responds like this:
 }
 ```
 
-Create `src/logiq_ai/providers/example.py`:
+Create `src/execgate_ai/providers/example.py`:
 
 ```python
 """Example adapter for a fictional provider."""
@@ -65,7 +65,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from logiq_ai.base import AdapterError, ToolSpec
+from execgate_ai.base import AdapterError, ToolSpec
 
 
 class ExampleAdapter:
@@ -118,15 +118,15 @@ Every failure mode raises `AdapterError`, which the application translates to `I
 
 ## 3. Register it
 
-Add an entry to `src/logiq_ai/registry.py::_PROVIDERS`:
+Add an entry to `src/execgate_ai/registry.py::_PROVIDERS`:
 
 ```python
 _PROVIDERS: dict[str, tuple[str, str]] = {
-    "openai": ("logiq_ai.providers.openai", "OpenAIAdapter"),
-    "anthropic": ("logiq_ai.providers.anthropic", "AnthropicAdapter"),
-    "gemini": ("logiq_ai.providers.gemini", "GeminiAdapter"),
-    "local": ("logiq_ai.providers.local", "LocalAdapter"),
-    "example": ("logiq_ai.providers.example", "ExampleAdapter"),  # New
+    "openai": ("execgate_ai.providers.openai", "OpenAIAdapter"),
+    "anthropic": ("execgate_ai.providers.anthropic", "AnthropicAdapter"),
+    "gemini": ("execgate_ai.providers.gemini", "GeminiAdapter"),
+    "local": ("execgate_ai.providers.local", "LocalAdapter"),
+    "example": ("execgate_ai.providers.example", "ExampleAdapter"),  # New
 }
 ```
 
@@ -139,7 +139,7 @@ Now `logix.tools.format("example")` resolves to your adapter. Unknown providers 
 Create `tests/adapters/test_example.py`:
 
 ```python
-from logiq_ai.providers.example import ExampleAdapter
+from execgate_ai.providers.example import ExampleAdapter
 from tests.adapters.contract import AdapterContractMixin
 
 
@@ -252,22 +252,22 @@ The adapter must accept any JSON-shaped response. If you type-hint against an SD
 
 The adapter is pure data shaping. The application owns the model call.
 
-If your adapter makes network calls, it's not an adapter — it's a client library, and it belongs in the application, not in `logiq_ai`.
+If your adapter makes network calls, it's not an adapter — it's a client library, and it belongs in the application, not in `execgate_ai`.
 
 ### Importing from the trust boundary
 
 ```python
-from logiq.verifier import verify_plan  # BAD — ADR-0006
+from execgate.verifier import verify_plan  # BAD — ADR-0006
 ```
 
 The conformance kit's `test_adapter_has_no_trust_boundary_attributes` catches attribute access at the object level. It does not catch a module-level import; that requires the adapter package's own `test_leaf_node_boundary.py`-style AST scan.
 
 The safest approach is to import only from:
 
-- `logiq.tools`
-- `logiq.results`
-- `logiq.errors`
-- `logiq.context`
+- `execgate.tools`
+- `execgate.results`
+- `execgate.errors`
+- `execgate.context`
 
 Anything else is a design smell.
 
@@ -313,7 +313,7 @@ They catch provider-format drift but do not gate conformance.
 
 ## 9. Checklist before submitting an adapter
 
-- [ ] `src/logiq_ai/providers/<name>.py` exists and implements `ProviderAdapter` (both methods, plus `name`).
+- [ ] `src/execgate_ai/providers/<name>.py` exists and implements `ProviderAdapter` (both methods, plus `name`).
 - [ ] Zero SDK imports at module level. Zero HTTP calls.
 - [ ] `registry.py::_PROVIDERS` has a `"<name>"` entry.
 - [ ] `tests/adapters/test_<name>.py` subclasses `AdapterContractMixin` and implements `make_adapter()` and `sample_proposal()`.
