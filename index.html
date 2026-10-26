@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Logiq Documentation</title>
+  <title>execgate Documentation</title>
   <link rel="stylesheet" href="app.css">
+  <link rel="shortcut icon" href="assets/images/execgate_logo.png" type="image/x-icon">
 
   <!-- Load order matters: plugins first, then data libs, then main.js, then Alpine core LAST -->
   <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.1/dist/cdn.min.js"></script>
@@ -39,7 +40,7 @@
     <aside class="sidebar" :class="{ 'is-open': mobileSidebarOpen }">
       <div class="sidebar-header">
         <a href="#" class="brand" @click.prevent="navigateTo(firstPagePath())">
-          <span class="brand-name">Logiq</span>
+          <span class="brand-name">execgate</span>
           <span class="brand-version" x-text="version"></span>
         </a>
       </div>
